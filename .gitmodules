@@ -1,0 +1,27 @@
+[submodule "third_party/research/agentdojo"]
+	path = third_party/research/agentdojo
+	url = https://github.com/ethz-spylab/agentdojo.git
+[submodule "third_party/research/BIPIA"]
+	path = third_party/research/BIPIA
+	url = https://github.com/microsoft/BIPIA.git
+[submodule "third_party/research/garak"]
+	path = third_party/research/garak
+	url = https://github.com/NVIDIA/garak.git
+[submodule "third_party/research/HouYi"]
+	path = third_party/research/HouYi
+	url = https://github.com/LLMSecurity/HouYi.git
+[submodule "third_party/research/PyRIT"]
+	path = third_party/research/PyRIT
+	url = https://github.com/microsoft/PyRIT.git
+[submodule "third_party/research/InjecAgent"]
+	path = third_party/research/InjecAgent
+	url = https://github.com/uiuc-kang-lab/InjecAgent.git
+[submodule "third_party/research/ToolEmu"]
+	path = third_party/research/ToolEmu
+	url = https://github.com/ryoungj/ToolEmu.git
+[submodule "third_party/research/AdaptiveAttackAgent"]
+	path = third_party/research/AdaptiveAttackAgent
+	url = https://github.com/uiuc-kang-lab/AdaptiveAttackAgent.git
+[submodule "third_party/research/GPTFuzz"]
+	path = third_party/research/GPTFuzz
+	url = https://github.com/sherdencooper/GPTFuzz.git
