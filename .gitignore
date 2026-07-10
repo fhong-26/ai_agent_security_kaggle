@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# OS metadata
+.DS_Store
+
 # C extensions
 *.so
 
@@ -158,6 +161,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+!third_party/kaggle_ai_agent_security/aicomp_sdk/core/env/
+!third_party/kaggle_ai_agent_security/aicomp_sdk/core/env/**
+third_party/kaggle_ai_agent_security/**/__pycache__/
+third_party/kaggle_ai_agent_security/**/*.py[codz]
 
 # Spyder project settings
 .spyderproject
@@ -212,10 +219,7 @@ tempCodeRunnerFile.py
 .pypirc
 
 # Kaggle competition data and local artifacts
-data/raw/
-data/external/
-data/interim/
-data/processed/
+data/
 submissions/
 runs/
 outputs/
