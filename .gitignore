@@ -149,6 +149,8 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
 .envrc
 .venv
 env/
@@ -208,6 +210,39 @@ tempCodeRunnerFile.py
 
 # PyPI configuration file
 .pypirc
+
+# Kaggle competition data and local artifacts
+data/raw/
+data/external/
+data/interim/
+data/processed/
+submissions/
+runs/
+outputs/
+artifacts/
+models/
+checkpoints/
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+*.csv
+*.jsonl
+*.parquet
+*.feather
+*.pkl
+*.pickle
+*.sqlite
+*.db
+*.ipynb
+!notebooks/**/*.ipynb
+
+# Local secret and experiment notes that may contain sensitive traces
+*.local
+*.secret
+*.trace
+*.har
 
 # Marimo
 marimo/_static/
