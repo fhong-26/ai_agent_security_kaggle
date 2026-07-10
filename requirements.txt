@@ -1,0 +1,17 @@
+# Runtime dependencies for the vendored Kaggle AI Agent Security SDK snapshot.
+#
+# The SDK metadata lists transformers, torch, openai, and gymnasium. The source
+# also imports pydantic directly, and the vendored Kaggle evaluation bridge
+# imports grpc/numpy/pandas/polars/pyarrow.
+
+pydantic>=2.0
+gymnasium>=0.29,<1
+openai>=1.0.0
+transformers>=4.30.0
+torch>=2.0.0
+
+grpcio>=1.62
+numpy>=1.26
+pandas>=2.0
+polars>=0.20
+pyarrow>=14.0
