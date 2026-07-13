@@ -324,6 +324,15 @@ Examples studied:
 - `lucifer19/shadow-cat-firewall`
 - `yusuketogashi/lb60-525-july-safe-edge-prune-tail8-upgrade`
 
+Repo status, 2026-07-13:
+
+- Applied as an opt-in `live-burst` / `burst-stack` mode.
+- Each burst candidate contains several tiny unique `http.post` prompts.
+- The validator keeps a burst only when the exported trace contains enough real
+  marker-bearing `http.post` events and matching `EXFILTRATION` predicates.
+- This is not the default submission path yet because public notebooks warn that
+  burst candidates are fragile and can waste replay time.
+
 ### Pattern 6: Portfolio, Auto, And Timeit Modes
 
 Some notebooks are little experiment engines. They can:
@@ -345,6 +354,18 @@ Examples studied:
 Baby idea:
 
 **They built a small lab inside `attack.py`.**
+
+Repo status, 2026-07-13:
+
+- Mostly applied before this pass through `submission-live`, timing reserve
+  knobs, warmup, live validation, candidate dedupe, and family fail caps.
+- Made explicit now with `auto` / `portfolio-auto` / `timeit` aliases that probe
+  all four live-fill families and prune a family after one unproductive attempt
+  unless configured otherwise.
+- Live-fill attempts now record `elapsed_s`, `reserve_s`, and `remaining_s` in
+  `last_run_details`, so the mode behaves like a tiny timing lab.
+- Burst mode also has a fallback to the proven exfil/confused live-fill path if
+  no stacked candidate fires.
 
 ## Did People Use LLMs To Do Things?
 
