@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SDK_ROOT = REPO_ROOT / "third_party" / "kaggle_ai_agent_security"
@@ -44,6 +45,10 @@ DEFAULT_SEED = 123
 DEFAULT_MAX_TOOL_HOPS = 4
 DEFAULT_SAMPLE_LIMIT = 50
 NO_GUARDRAIL_ALIASES = {"none", "allow_all", "diagnostic_none"}
+GGUF_AGENT_MODULES = {
+    "gpt_oss_gguf": "kaggle_evaluation.jed_attack_134815.gpt_oss_model_server",
+    "gemma_gguf": "kaggle_evaluation.jed_attack_134815.gemma_model_server",
+}
 SENSITIVE_NAME_RE = re.compile(
     r"(secret|credential|api[_-]?key|token|password|passwd|private)", re.IGNORECASE
 )
@@ -215,6 +220,19 @@ def _candidate_limit(
     return specs[: max(0, int(max_candidates))]
 
 
+def build_replay_agent_factory(agent: str, *, verbose: bool):
+    """Build an SDK agent factory, including optional local GGUF model servers."""
+    module_name = GGUF_AGENT_MODULES.get(agent)
+    if module_name is None:
+        return build_agent_factory(agent, verbose=verbose)
+
+    from kaggle_evaluation.jed_attack_134815 import remote_agent
+
+    model_server = importlib.import_module(module_name)
+    predict_fn: Callable[[Mapping[str, Any]], Mapping[str, Any]] = model_server.predict
+    return lambda: remote_agent.RemoteAgent(predict_fn)
+
+
 def build_replay_env(args: argparse.Namespace, fixtures_dir: Path):
     """Construct the SDK sandbox used by the local replay harness."""
     if args.guardrail in NO_GUARDRAIL_ALIASES:
@@ -222,7 +240,7 @@ def build_replay_env(args: argparse.Namespace, fixtures_dir: Path):
     else:
         guardrail_spec = resolve_attack_guardrail_spec(args.guardrail)
         guardrail = guardrail_spec.guardrail_factory()
-    agent_factory = build_agent_factory(args.agent, verbose=args.verbosity == "debug")
+    agent_factory = build_replay_agent_factory(args.agent, verbose=args.verbosity == "debug")
     return build_attack_env(
         seed=int(args.seed),
         fixtures_dir=fixtures_dir,

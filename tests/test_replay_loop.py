@@ -26,6 +26,7 @@ from attack import (
 )
 from run_candidate_replay import (
     build_arg_parser,
+    build_replay_agent_factory,
     build_replay_env,
     decide_attempt,
     load_fixture_map,
@@ -302,6 +303,16 @@ class ReplayArtifactTests(unittest.TestCase):
         self.assertEqual("positive-control", run_label("positive control"))
         self.assertEqual("diagnostic_none", run_label("diagnostic_none"))
         self.assertEqual("default", run_label("   "))
+
+
+class GgufAgentFactoryTests(unittest.TestCase):
+    """Checks optional local GGUF agents wire through the remote-agent protocol."""
+
+    def test_gpt_oss_gguf_agent_factory_is_lazy_remote_agent(self) -> None:
+        factory = build_replay_agent_factory("gpt_oss_gguf", verbose=False)
+        agent = factory()
+
+        self.assertEqual("RemoteAgent", type(agent).__name__)
 
 
 class CandidateValidationTests(unittest.TestCase):
