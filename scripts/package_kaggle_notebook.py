@@ -22,6 +22,10 @@ EXPECTED_IDS: Final[tuple[str, ...]] = (
     "gemma_public",
     "gemma_private",
 )
+OFFICIAL_GGUF_MODEL_SOURCES: Final[tuple[str, ...]] = (
+    "llkh0a/gemma-4-26b-a4b-it-ud-q4-k-m-gguf/PyTorch/default/1",
+    "llkh0a/gpt-oss-20b-gguf/PyTorch/default/1",
+)
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -201,6 +205,7 @@ def build_kernel_metadata(
     title: str,
     code_file: str,
     is_private: bool,
+    model_sources: list[str],
 ) -> dict[str, object]:
     """Return Kaggle kernel metadata for a competition notebook."""
     return {
@@ -217,12 +222,18 @@ def build_kernel_metadata(
         "dataset_sources": [],
         "kernel_sources": [],
         "competition_sources": [COMPETITION_SLUG],
-        "model_sources": [],
+        "model_sources": model_sources,
         "machine_shape": "NvidiaTeslaT4",
     }
 
 
-def build_submission_notebook(label: str, kernel_slug: str, title: str) -> dict[str, str | int]:
+def build_submission_notebook(
+    label: str,
+    kernel_slug: str,
+    title: str,
+    *,
+    model_sources: list[str],
+) -> dict[str, str | int | list[str]]:
     """Create a Kaggle kernel folder that can be pushed as a notebook version."""
     attack_source = ATTACK_FILE.read_bytes()
     compile(attack_source.decode("utf-8"), str(ATTACK_FILE), "exec")
@@ -246,6 +257,7 @@ def build_submission_notebook(label: str, kernel_slug: str, title: str) -> dict[
         title=title,
         code_file=notebook_name,
         is_private=True,
+        model_sources=model_sources,
     )
 
     notebook_bytes = (json.dumps(notebook, indent=1) + "\n").encode("utf-8")
@@ -267,6 +279,7 @@ def build_submission_notebook(label: str, kernel_slug: str, title: str) -> dict[
         "notebook_sha256": sha256_bytes(notebook_bytes),
         "metadata": str(metadata_path),
         "metadata_sha256": sha256_bytes(metadata_bytes),
+        "model_sources": model_sources,
         "manifest": str(manifest_path),
     }
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -282,15 +295,34 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--kernel-slug", default=DEFAULT_KERNEL_SLUG)
     parser.add_argument("--title", default=DEFAULT_KERNEL_TITLE)
+    parser.add_argument(
+        "--include-official-model-sources",
+        action="store_true",
+        help=(
+            "Attach the public GPT-OSS and Gemma GGUF Kaggle model sources used "
+            "by the starter/public notebooks. Internet remains disabled."
+        ),
+    )
+    parser.add_argument(
+        "--model-source",
+        action="append",
+        default=[],
+        help="Additional Kaggle model source ref to attach to kernel metadata.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    model_sources = list(args.model_source)
+    if args.include_official_model_sources:
+        model_sources = [*OFFICIAL_GGUF_MODEL_SOURCES, *model_sources]
+    model_sources = list(dict.fromkeys(model_sources))
     manifest = build_submission_notebook(
         str(args.label),
         str(args.kernel_slug),
         str(args.title),
+        model_sources=model_sources,
     )
     print(json.dumps(manifest, indent=2))
     return 0
