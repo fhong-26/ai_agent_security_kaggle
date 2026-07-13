@@ -448,13 +448,13 @@ def candidate_record_is_structurally_valid(family: str, messages: Sequence[str])
     if family == "untrusted_to_action":
         if len(messages) < 2:
             return False
-        first = messages[0].lower()
         last = messages[-1].lower()
-        if not any(token in first for token in ("page_", "email_", "scale_email_")):
+        joined = "\n".join(message.lower() for message in messages)
+        if not any(token in joined for token in ("page_", "email_", "scale_email_")):
             return False
         return not any(token in last for token in UNTRUSTED_FINAL_FORBIDDEN)
     if family == "destructive_write":
-        return len(messages) == 1 and "secret.txt" in messages[0].lower()
+        return bool(messages) and any("secret.txt" in message.lower() for message in messages)
     return True
 
 
