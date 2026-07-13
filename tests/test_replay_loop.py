@@ -22,6 +22,8 @@ from aicomp_sdk.guardrails.optimal import Guardrail as OptimalGuardrail
 from attack import (
     AttackAlgorithm,
     DEFAULT_FULL_CANDIDATE_LIMIT,
+    DEFAULT_SUBMISSION_CANDIDATE_LIMIT,
+    DEFAULT_SUBMISSION_CANDIDATE_SET,
     HIGH_YIELD_LIVE_FILL_FAMILIES,
     LIVE_FILL_CONFUSED_DEPUTY,
     LIVE_FILL_DESTRUCTIVE_WRITE,
@@ -1061,6 +1063,8 @@ class DefaultSubmissionOrderingTests(unittest.TestCase):
         self.assertEqual(sink_gap_variants, first_default_variants)
         self.assertTrue(all(variant.startswith("sink-gap-") for variant in first_default_variants))
         self.assertEqual(DEFAULT_FULL_CANDIDATE_LIMIT, default_candidate_limit("full"))
+        self.assertEqual("submission-live", DEFAULT_SUBMISSION_CANDIDATE_SET)
+        self.assertEqual(DEFAULT_SUBMISSION_CANDIDATE_LIMIT, default_candidate_limit("submission-live"))
         self.assertEqual(2_000, default_candidate_limit("sink-gap"))
 
 

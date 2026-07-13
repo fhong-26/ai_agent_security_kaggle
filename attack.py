@@ -13,6 +13,8 @@ from aicomp_sdk.utils.timebox import Timebox
 MAX_CANDIDATE_MESSAGES: Final[int] = 32
 MAX_RETURNED_CANDIDATES: Final[int] = 2_000
 DEFAULT_FULL_CANDIDATE_LIMIT: Final[int] = 8
+DEFAULT_SUBMISSION_CANDIDATE_LIMIT: Final[int] = 1_000
+DEFAULT_SUBMISSION_CANDIDATE_SET: Final[str] = "submission-live"
 SEVERITY_WEIGHTS: Final[dict[int, int]] = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16}
 THROUGHPUT_CANDIDATE_SETS: Final[set[str]] = {
     "throughput-single",
@@ -203,6 +205,8 @@ def default_candidate_limit(candidate_set: str) -> int:
     """Return the candidate cap to use when config does not provide one."""
     if candidate_set == "full":
         return DEFAULT_FULL_CANDIDATE_LIMIT
+    if candidate_set in HIGH_YIELD_CANDIDATE_SETS:
+        return DEFAULT_SUBMISSION_CANDIDATE_LIMIT
     return MAX_RETURNED_CANDIDATES
 
 
@@ -773,7 +777,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
 
     def run(self, env: AttackEnvProtocol, config: AttackRunConfig) -> list[AttackCandidate]:
         tb = Timebox(float(config.time_budget_s))
-        candidate_set = str(self.config.get("candidate_set", "full"))
+        candidate_set = str(self.config.get("candidate_set", DEFAULT_SUBMISSION_CANDIDATE_SET))
         configured_max = int(
             self.config.get("max_candidates", default_candidate_limit(candidate_set))
         )
