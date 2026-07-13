@@ -218,6 +218,7 @@ def build_kernel_metadata(
         "kernel_sources": [],
         "competition_sources": [COMPETITION_SLUG],
         "model_sources": [],
+        "machine_shape": "NvidiaTeslaT4",
     }
 
 
