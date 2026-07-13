@@ -218,6 +218,10 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# Kaggle AI Agent Security local artifacts
+.aicomp/
+evaluation_artifacts/
+
 # Kaggle competition data and local artifacts
 data/
 submissions/
