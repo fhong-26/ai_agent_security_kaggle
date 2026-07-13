@@ -48,6 +48,15 @@ LIVE_ALL_CANDIDATE_SETS: Final[set[str]] = {
     "live-all-four",
     "crowd-live",
 }
+HIGH_YIELD_CANDIDATE_SETS: Final[set[str]] = {
+    "live-high-yield",
+    "live_high_yield",
+    "high-yield-live",
+    "score-live",
+    "submission-live",
+    "live-exfil-confused",
+    "live_exfil_confused",
+}
 LIVE_FILL_EXFIL: Final[str] = "exfil"
 LIVE_FILL_CONFUSED_DEPUTY: Final[str] = "confused_deputy"
 LIVE_FILL_UNTRUSTED_TO_ACTION: Final[str] = "untrusted_to_action"
@@ -58,12 +67,17 @@ ALL_LIVE_FILL_FAMILIES: Final[tuple[str, ...]] = (
     LIVE_FILL_UNTRUSTED_TO_ACTION,
     LIVE_FILL_DESTRUCTIVE_WRITE,
 )
+HIGH_YIELD_LIVE_FILL_FAMILIES: Final[tuple[str, ...]] = (
+    LIVE_FILL_EXFIL,
+    LIVE_FILL_CONFUSED_DEPUTY,
+)
 LIVE_FILL_CANDIDATE_SETS: Final[dict[str, tuple[str, ...]]] = {
     **{name: (LIVE_FILL_EXFIL,) for name in THROUGHPUT_CANDIDATE_SETS},
     **{name: (LIVE_FILL_CONFUSED_DEPUTY,) for name in CONFUSED_DEPUTY_CANDIDATE_SETS},
     **{name: (LIVE_FILL_UNTRUSTED_TO_ACTION,) for name in UNTRUSTED_TO_ACTION_CANDIDATE_SETS},
     **{name: (LIVE_FILL_DESTRUCTIVE_WRITE,) for name in DESTRUCTIVE_WRITE_CANDIDATE_SETS},
     **{name: ALL_LIVE_FILL_FAMILIES for name in LIVE_ALL_CANDIDATE_SETS},
+    **{name: HIGH_YIELD_LIVE_FILL_FAMILIES for name in HIGH_YIELD_CANDIDATE_SETS},
 }
 LIVE_FILL_PREDICATES: Final[dict[str, str]] = {
     LIVE_FILL_EXFIL: "EXFILTRATION",
@@ -908,6 +922,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
                 )
             ),
         )
+        family_fail_cap = max(0, int(self.config.get("live_fill_family_fail_cap", 0)))
 
         attempts: list[dict[str, Any]] = []
         retained_by_cell: dict[str, dict[str, Any]] = {}
@@ -970,13 +985,20 @@ class AttackAlgorithm(AttackAlgorithmBase):
                 )
 
         family_indexes = {family: start_index for family in families}
+        family_failures = {family: 0 for family in families}
+        active_families = list(families)
+        family_cursor = 0
         candidate_attempts = 0
-        while len(retained_by_cell) < max_candidates and candidate_attempts < max_attempts:
+        while (
+            len(retained_by_cell) < max_candidates
+            and candidate_attempts < max_attempts
+            and active_families
+        ):
             reserve_s = max(slowest_s * slowest_mult, margin_s)
             if tb.remaining() <= reserve_s:
                 break
 
-            family = families[candidate_attempts % len(families)]
+            family = active_families[family_cursor % len(active_families)]
             index = family_indexes[family]
             family_indexes[family] += 1
             candidate_attempts += 1
@@ -1070,6 +1092,20 @@ class AttackAlgorithm(AttackAlgorithmBase):
             attempts.append(attempt)
             if attempt["decision"] == "keep":
                 retained_by_cell[str(attempt["cell_hash"])] = attempt
+                family_failures[family] = 0
+            elif attempt["decision"] in {
+                "discard_no_predicate",
+                "discard_error",
+                "discard_invalid",
+            }:
+                family_failures[family] += 1
+                if family_fail_cap and family_failures[family] >= family_fail_cap:
+                    attempt["family_disabled"] = True
+                    active_families = [item for item in active_families if item != family]
+                    if active_families:
+                        family_cursor %= len(active_families)
+                    continue
+            family_cursor += 1
 
         self.last_run_details = attempts
         return [
