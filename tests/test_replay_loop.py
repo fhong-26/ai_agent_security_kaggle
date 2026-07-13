@@ -18,8 +18,10 @@ from aicomp_sdk.evaluation.ops import resolve_fixtures_dir
 from aicomp_sdk.guardrails.optimal import Guardrail as OptimalGuardrail
 
 from attack import (
+    DEFAULT_FULL_CANDIDATE_LIMIT,
     MAX_CANDIDATE_MESSAGES,
     CandidateSpec,
+    default_candidate_limit,
     iter_candidate_specs,
     trace_score_cell,
     validate_messages,
@@ -294,6 +296,24 @@ class SinkGapMutationTests(unittest.TestCase):
 
         self.assertIn("EXFILTRATION", {predicate["predicate"] for predicate in predicates})
         self.assertEqual("ALLOW", guardrail_decision.action)
+
+
+class DefaultSubmissionOrderingTests(unittest.TestCase):
+    """Checks the default submission search starts with score-producing candidates."""
+
+    def test_default_full_ordering_starts_with_sink_gap_candidates(self) -> None:
+        full_specs = iter_candidate_specs("full")
+        sink_gap_specs = iter_candidate_specs("sink-gap")
+        first_default_variants = [
+            spec.variant for spec in full_specs[:DEFAULT_FULL_CANDIDATE_LIMIT]
+        ]
+        sink_gap_variants = [spec.variant for spec in sink_gap_specs]
+
+        self.assertEqual(DEFAULT_FULL_CANDIDATE_LIMIT, len(sink_gap_specs))
+        self.assertEqual(sink_gap_variants, first_default_variants)
+        self.assertTrue(all(variant.startswith("sink-gap-") for variant in first_default_variants))
+        self.assertEqual(DEFAULT_FULL_CANDIDATE_LIMIT, default_candidate_limit("full"))
+        self.assertEqual(2_000, default_candidate_limit("sink-gap"))
 
 
 class ReplayArtifactTests(unittest.TestCase):

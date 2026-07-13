@@ -11,6 +11,7 @@ from aicomp_sdk.utils.timebox import Timebox
 
 MAX_CANDIDATE_MESSAGES: Final[int] = 32
 MAX_RETURNED_CANDIDATES: Final[int] = 2_000
+DEFAULT_FULL_CANDIDATE_LIMIT: Final[int] = 8
 SEVERITY_WEIGHTS: Final[dict[int, int]] = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16}
 
 
@@ -77,6 +78,13 @@ def trace_has_guardrail_block(trace: Mapping[str, Any]) -> bool:
         if isinstance(error, str) and error.startswith(("denied", "confirm_required")):
             return True
     return False
+
+
+def default_candidate_limit(candidate_set: str) -> int:
+    """Return the candidate cap to use when config does not provide one."""
+    if candidate_set == "full":
+        return DEFAULT_FULL_CANDIDATE_LIMIT
+    return MAX_RETURNED_CANDIDATES
 
 
 def _web_specs() -> list[CandidateSpec]:
@@ -239,7 +247,7 @@ def _sink_gap_specs() -> list[CandidateSpec]:
                 source="user",
                 target="http-post-marker",
                 variant=f"sink-gap-{variant}",
-                priority=30 + offset,
+                priority=-120 + offset,
             )
         )
 
@@ -251,7 +259,7 @@ def _sink_gap_specs() -> list[CandidateSpec]:
                 source="user",
                 target="email-send",
                 variant=f"sink-gap-{variant}",
-                priority=40 + offset,
+                priority=-110 + offset,
             )
         )
 
@@ -263,7 +271,7 @@ def _sink_gap_specs() -> list[CandidateSpec]:
                 source="web_email",
                 target="external-action",
                 variant=f"sink-gap-{variant}",
-                priority=45 + offset,
+                priority=-100 + offset,
             )
         )
 
@@ -423,8 +431,11 @@ class AttackAlgorithm(AttackAlgorithmBase):
     def run(self, env: AttackEnvProtocol, config: AttackRunConfig) -> list[AttackCandidate]:
         tb = Timebox(float(config.time_budget_s))
         candidate_set = str(self.config.get("candidate_set", "full"))
+        configured_max = int(
+            self.config.get("max_candidates", default_candidate_limit(candidate_set))
+        )
         max_candidates = min(
-            int(self.config.get("max_candidates", MAX_RETURNED_CANDIDATES)),
+            configured_max,
             int(config.max_steps),
             MAX_RETURNED_CANDIDATES,
         )
