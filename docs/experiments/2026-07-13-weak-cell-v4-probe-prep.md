@@ -110,4 +110,79 @@ So this V4 is intentionally not the best score-seeking submission. It is a small
 
 ## Decision
 
-Prepare and submit as V4 only after code is committed and packaged from the committed hash.
+Prepared and submitted as V4 from committed source.
+
+## Packaging
+
+Committed code:
+
+```text
+8b937c4 Prepare weak-cell V4 probe
+```
+
+Packaged notebook:
+
+```bash
+PYTHONPATH=third_party/kaggle_ai_agent_security .venv/bin/python scripts/package_kaggle_notebook.py \
+  --label weak-cell-v4-probe \
+  --kernel-slug ai-agent-security-high-yield-60 \
+  --title "AI Agent Security Weak Cell V4 Probe"
+```
+
+Manifest:
+
+```text
+submissions/weak-cell-v4-probe-8b937c4-notebook/manifest.json
+```
+
+Important package fields:
+
+```text
+repo_commit: 8b937c4
+attack_source_commit: 8b937c4
+attack_py_sha256: 1fe4c37d7f43bb40e84b3d726d441c393ad7db921c5a8eda2a01900d0f1ecb61
+notebook_sha256: 06f3efc99f22895fc5dea0bc19501f5dc7fb9a4d3f558bdb00312f2398a6ac5a
+```
+
+## Kaggle Push And Submission
+
+Pushed kernel:
+
+```bash
+.venv/bin/kaggle kernels push -p submissions/weak-cell-v4-probe-8b937c4-notebook/kernel
+```
+
+Result:
+
+```text
+Kernel version 4 successfully pushed.
+Resolved kernel ref: temperancehong/ai-agent-security-weak-cell-v4-probe
+Kernel status: COMPLETE
+```
+
+Notebook output log confirmed:
+
+```text
+attack.py bytes: 74417
+attack.py sha256: 1fe4c37d7f43bb40e84b3d726d441c393ad7db921c5a8eda2a01900d0f1ecb61
+```
+
+Submitted to competition:
+
+```bash
+.venv/bin/kaggle competitions submit \
+  -c ai-agent-security-multi-step-tool-attacks \
+  -f submission.csv \
+  -k temperancehong/ai-agent-security-weak-cell-v4-probe \
+  -v 4 \
+  -m "Weak-cell V4 50 candidate probe"
+```
+
+Submission registration:
+
+```text
+Submission ref: 54652641
+Date: 2026-07-13 15:46:48.610000
+Description: Weak-cell V4 50 candidate probe
+Status at registration: SubmissionStatus.PENDING
+```
