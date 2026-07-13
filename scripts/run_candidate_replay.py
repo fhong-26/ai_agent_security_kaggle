@@ -30,11 +30,14 @@ from aicomp_sdk.guardrails.base import GuardrailBase
 
 from attack import (
     CandidateSpec,
+    confused_deputy_recipient,
     iter_candidate_specs,
     predicate_weight,
     trace_has_guardrail_block,
     trace_score_cell,
     trace_tool_sequence,
+    throughput_label,
+    throughput_url,
     validate_messages,
 )
 
@@ -220,6 +223,62 @@ def _candidate_limit(
     return specs[: max(0, int(max_candidates))]
 
 
+def render_generated_message(message: str, index: int) -> str:
+    """Render safe deterministic placeholders used by LLM-generated candidates."""
+    rendered = str(message)
+    label = throughput_label(index)
+    replacements = {
+        "{url}": throughput_url(index),
+        "{recipient}": confused_deputy_recipient(index),
+        "{label}": label,
+        "{checkpoint}": label,
+    }
+    for placeholder, value in replacements.items():
+        rendered = rendered.replace(placeholder, value)
+    return rendered
+
+
+def load_llm_candidate_specs(path: Path) -> tuple[CandidateSpec, ...]:
+    """Load generated candidate JSONL as replayable specs with rendered placeholders."""
+    specs: list[CandidateSpec] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, raw_line in enumerate(handle, start=1):
+            line = raw_line.strip()
+            if not line:
+                continue
+            item = json.loads(line)
+            if not isinstance(item, Mapping):
+                continue
+            raw_messages = item.get("messages", [])
+            if isinstance(raw_messages, str):
+                raw_messages = [raw_messages]
+            if not isinstance(raw_messages, Sequence) or isinstance(raw_messages, (bytes, bytearray)):
+                continue
+            index = int(item.get("index", line_number))
+            messages = tuple(
+                render_generated_message(str(message), index)
+                for message in raw_messages
+                if str(message).strip()
+            )
+            if not messages:
+                continue
+            family = str(item.get("family", "llm_generated"))
+            batch_id = str(item.get("batch_id", "unknown"))
+            source_model = str(item.get("source_model", "unknown"))
+            strategy = str(item.get("strategy", "") or "template")
+            specs.append(
+                CandidateSpec(
+                    family=family,
+                    messages=messages,
+                    source=f"llm:{source_model}",
+                    target=family,
+                    variant=f"llm-{batch_id}-{index:04d}-{strategy}",
+                    priority=line_number,
+                )
+            )
+    return tuple(specs)
+
+
 def build_replay_agent_factory(agent: str, *, verbose: bool):
     """Build an SDK agent factory, including optional local GGUF model servers."""
     module_name = GGUF_AGENT_MODULES.get(agent)
@@ -337,6 +396,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--max-tool-hops", type=int, default=DEFAULT_MAX_TOOL_HOPS)
     parser.add_argument("--candidate-set", default="smoke")
+    parser.add_argument(
+        "--candidate-jsonl",
+        type=Path,
+        default=None,
+        help="Replay LLM-generated candidate JSONL instead of a built-in candidate set.",
+    )
     parser.add_argument("--max-candidates", type=int, default=None)
     parser.add_argument("--fixtures-dir", type=Path, default=None)
     parser.add_argument("--runs-dir", type=Path, default=REPO_ROOT / "runs")
@@ -350,12 +415,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     fixtures_dir = resolve_fixtures_dir(args.fixtures_dir)
     fixture_map = load_fixture_map(fixtures_dir, sample_limit=args.fixture_sample_limit)
     env = build_replay_env(args, fixtures_dir)
-    specs = _candidate_limit(tuple(iter_candidate_specs(args.candidate_set)), args.max_candidates)
+    candidate_label = args.candidate_set
+    if args.candidate_jsonl is not None:
+        specs = tuple(load_llm_candidate_specs(args.candidate_jsonl))
+        candidate_label = args.candidate_jsonl.stem
+    else:
+        specs = tuple(iter_candidate_specs(args.candidate_set))
+    specs = _candidate_limit(specs, args.max_candidates)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output_path = args.runs_dir / (
         "candidate-replay-"
-        f"{timestamp}-{run_label(args.candidate_set)}-{run_label(args.guardrail)}.jsonl"
+        f"{timestamp}-{run_label(candidate_label)}-{run_label(args.guardrail)}.jsonl"
     )
     seen_cells: set[str] = set()
     records: list[dict[str, Any]] = [
