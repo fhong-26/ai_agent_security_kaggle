@@ -28,6 +28,7 @@ from attack import (
     DEFAULT_SUBMISSION_CANDIDATE_LIMIT,
     DEFAULT_SUBMISSION_CANDIDATE_SET,
     DESTRUCTIVE_WRITE_VARIANTS,
+    HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT,
     HIGH_YIELD_LIVE_FILL_FAMILIES,
     LIVE_FILL_CONFUSED_DEPUTY,
     LIVE_FILL_DESTRUCTIVE_WRITE,
@@ -44,6 +45,7 @@ from attack import (
     is_auto_portfolio_candidate_set,
     is_burst_stack_candidate_set,
     is_live_fill_candidate_set,
+    is_static_return_candidate_set,
     is_throughput_candidate_set,
     iter_candidate_specs,
     live_fill_families,
@@ -886,6 +888,49 @@ class ThroughputLiveFillTests(unittest.TestCase):
         for spec in specs:
             self.assertEqual(spec.messages, validate_messages(spec.messages))
 
+    def test_weak_cell_probe_has_static_25_by_25_shape(self) -> None:
+        specs = iter_candidate_specs("submission-weak-v4")
+        family_counts = {
+            LIVE_FILL_UNTRUSTED_TO_ACTION: 0,
+            LIVE_FILL_DESTRUCTIVE_WRITE: 0,
+        }
+
+        self.assertTrue(is_static_return_candidate_set("submission-weak-v4"))
+        self.assertEqual(50, len(specs))
+        self.assertEqual(DEFAULT_SUBMISSION_CANDIDATE_LIMIT, default_candidate_limit("submission-weak-v4"))
+        self.assertTrue(specs[0].variant.startswith("v4-untrusted-"))
+        self.assertTrue(specs[-1].variant.startswith("v4-destructive-"))
+        for spec in specs:
+            family_counts[spec.family] += 1
+            self.assertEqual("weak-cell-bank", spec.source)
+            self.assertEqual(spec.messages, validate_messages(spec.messages))
+
+        self.assertEqual(25, family_counts[LIVE_FILL_UNTRUSTED_TO_ACTION])
+        self.assertEqual(25, family_counts[LIVE_FILL_DESTRUCTIVE_WRITE])
+
+    def test_weak_cell_probe_default_returns_static_candidates(self) -> None:
+        env = FakeLiveFillEnv(fire=False)
+        algorithm = AttackAlgorithm()
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=50, max_tool_hops=4),
+        )
+
+        self.assertEqual(50, len(candidates))
+        self.assertEqual(0, env.interactions)
+        self.assertEqual(
+            {"return_unvalidated"},
+            {attempt["decision"] for attempt in algorithm.last_run_details},
+        )
+        self.assertEqual(
+            {
+                LIVE_FILL_UNTRUSTED_TO_ACTION,
+                LIVE_FILL_DESTRUCTIVE_WRITE,
+            },
+            {attempt["family"] for attempt in algorithm.last_run_details},
+        )
+
     def test_weak_research_live_fill_keeps_source_to_sink_shapes(self) -> None:
         env = FakeLiveFillEnv(fire=True)
         algorithm = AttackAlgorithm(
@@ -1031,7 +1076,7 @@ class ThroughputLiveFillTests(unittest.TestCase):
     def test_auto_portfolio_prunes_dead_families_by_default(self) -> None:
         self.assertTrue(is_auto_portfolio_candidate_set("auto"))
         self.assertTrue(is_auto_portfolio_candidate_set("timeit"))
-        self.assertEqual(DEFAULT_SUBMISSION_CANDIDATE_LIMIT, default_candidate_limit("auto"))
+        self.assertEqual(HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT, default_candidate_limit("auto"))
 
         env = FakeLiveFillEnv(
             fire=True,
@@ -1270,6 +1315,7 @@ class DefaultSubmissionOrderingTests(unittest.TestCase):
     def test_default_full_ordering_starts_with_sink_gap_candidates(self) -> None:
         full_specs = iter_candidate_specs("full")
         sink_gap_specs = iter_candidate_specs("sink-gap")
+        weak_probe_specs = iter_candidate_specs("submission-weak-v4")
         first_default_variants = [
             spec.variant for spec in full_specs[:DEFAULT_FULL_CANDIDATE_LIMIT]
         ]
@@ -1279,8 +1325,14 @@ class DefaultSubmissionOrderingTests(unittest.TestCase):
         self.assertEqual(sink_gap_variants, first_default_variants)
         self.assertTrue(all(variant.startswith("sink-gap-") for variant in first_default_variants))
         self.assertEqual(DEFAULT_FULL_CANDIDATE_LIMIT, default_candidate_limit("full"))
-        self.assertEqual("submission-live", DEFAULT_SUBMISSION_CANDIDATE_SET)
-        self.assertEqual(DEFAULT_SUBMISSION_CANDIDATE_LIMIT, default_candidate_limit("submission-live"))
+        self.assertEqual("submission-weak-v4", DEFAULT_SUBMISSION_CANDIDATE_SET)
+        self.assertEqual(50, DEFAULT_SUBMISSION_CANDIDATE_LIMIT)
+        self.assertEqual(DEFAULT_SUBMISSION_CANDIDATE_LIMIT, len(weak_probe_specs))
+        self.assertEqual(
+            DEFAULT_SUBMISSION_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-weak-v4"),
+        )
+        self.assertEqual(1000, default_candidate_limit("submission-live"))
         self.assertEqual(2_000, default_candidate_limit("sink-gap"))
 
 
