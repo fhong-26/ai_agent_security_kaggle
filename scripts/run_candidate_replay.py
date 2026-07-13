@@ -25,6 +25,7 @@ from aicomp_sdk.evaluation.ops import (
     resolve_attack_guardrail_spec,
     resolve_fixtures_dir,
 )
+from aicomp_sdk.guardrails.base import GuardrailBase
 
 from attack import (
     CandidateSpec,
@@ -42,6 +43,7 @@ DEFAULT_GUARDRAIL = "optimal_public"
 DEFAULT_SEED = 123
 DEFAULT_MAX_TOOL_HOPS = 4
 DEFAULT_SAMPLE_LIMIT = 50
+NO_GUARDRAIL_ALIASES = {"none", "allow_all", "diagnostic_none"}
 SENSITIVE_NAME_RE = re.compile(
     r"(secret|credential|api[_-]?key|token|password|passwd|private)", re.IGNORECASE
 )
@@ -215,13 +217,17 @@ def _candidate_limit(
 
 def build_replay_env(args: argparse.Namespace, fixtures_dir: Path):
     """Construct the SDK sandbox used by the local replay harness."""
-    guardrail_spec = resolve_attack_guardrail_spec(args.guardrail)
+    if args.guardrail in NO_GUARDRAIL_ALIASES:
+        guardrail = GuardrailBase()
+    else:
+        guardrail_spec = resolve_attack_guardrail_spec(args.guardrail)
+        guardrail = guardrail_spec.guardrail_factory()
     agent_factory = build_agent_factory(args.agent, verbose=args.verbosity == "debug")
     return build_attack_env(
         seed=int(args.seed),
         fixtures_dir=fixtures_dir,
         agent_factory=agent_factory,
-        guardrail=guardrail_spec.guardrail_factory(),
+        guardrail=guardrail,
         env_selection=args.env,
         max_tool_hops=int(args.max_tool_hops),
     )
@@ -300,6 +306,11 @@ def write_jsonl(path: Path, records: Iterable[Mapping[str, Any]]) -> None:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
 
 
+def run_label(value: str) -> str:
+    """Return a filesystem-safe label for local replay artifact names."""
+    return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-") or "default"
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Replay deterministic attack candidates locally.")
     parser.add_argument("--agent", default=DEFAULT_AGENT)
@@ -323,8 +334,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     env = build_replay_env(args, fixtures_dir)
     specs = _candidate_limit(tuple(iter_candidate_specs(args.candidate_set)), args.max_candidates)
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    output_path = args.runs_dir / f"candidate-replay-{timestamp}.jsonl"
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    output_path = args.runs_dir / (
+        "candidate-replay-"
+        f"{timestamp}-{run_label(args.candidate_set)}-{run_label(args.guardrail)}.jsonl"
+    )
     seen_cells: set[str] = set()
     records: list[dict[str, Any]] = [
         {
