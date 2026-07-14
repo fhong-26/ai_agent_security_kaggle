@@ -97,6 +97,31 @@ Poll with the Python API, not just the table output, and require:
 - `totalBytes > 0`;
 - `publicScore` is non-null.
 
+## Four-Type Sanity Variant
+
+It is possible to test a few candidates from all four predicate families while
+preserving the V2 submission style. The opt-in candidate set is:
+
+```text
+submission-four-type-sanity
+```
+
+Shape:
+
+- 12 total bounded attempts.
+- The first 8 are the known V2 sink-gap candidates.
+- The tail adds 4 destructive-write probes.
+- The attempted families are `EXFILTRATION`, `CONFUSED_DEPUTY`,
+  `UNTRUSTED_TO_ACTION`, and `DESTRUCTIVE_WRITE`.
+- The mode uses the V2 live-prefilter loop, not V4 static return: weak
+  candidates that do not trigger predicates during attack generation are not
+  returned for replay.
+
+Use this only after the fresh V2 sanity recovery submission proves the Kaggle
+path is valid again. To submit it, make a one-commit packaging branch that sets
+`DEFAULT_SUBMISSION_CANDIDATE_SET` to `submission-four-type-sanity`, package with
+a fresh matching slug/title, then restore the default afterward.
+
 ## Stop Conditions
 
 Do not submit another high-yield or weak-family variant until the fresh sanity

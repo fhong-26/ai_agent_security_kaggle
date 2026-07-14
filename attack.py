@@ -13,6 +13,7 @@ from aicomp_sdk.utils.timebox import Timebox
 MAX_CANDIDATE_MESSAGES: Final[int] = 32
 MAX_RETURNED_CANDIDATES: Final[int] = 2_000
 DEFAULT_FULL_CANDIDATE_LIMIT: Final[int] = 8
+DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT: Final[int] = 12
 DEFAULT_SUBMISSION_CANDIDATE_LIMIT: Final[int] = 50
 DEFAULT_SUBMISSION_CANDIDATE_SET: Final[str] = "full"
 HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT: Final[int] = 1_000
@@ -56,6 +57,14 @@ WEAK_RESEARCH_CANDIDATE_SETS: Final[set[str]] = {
     "weak_families",
     "research-weak",
     "research_weak",
+}
+FOUR_TYPE_SANITY_CANDIDATE_SETS: Final[set[str]] = {
+    "four-type-sanity",
+    "four_type_sanity",
+    "submission-four-type-sanity",
+    "submission_four_type_sanity",
+    "v2-four-type",
+    "v2_four_type",
 }
 WEAK_CELL_PROBE_CANDIDATE_SETS: Final[set[str]] = {
     "weak-cell-probe",
@@ -618,6 +627,8 @@ def default_candidate_limit(candidate_set: str) -> int:
     """Return the candidate cap to use when config does not provide one."""
     if candidate_set == "full":
         return DEFAULT_FULL_CANDIDATE_LIMIT
+    if candidate_set in FOUR_TYPE_SANITY_CANDIDATE_SETS:
+        return DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT
     if candidate_set in WEAK_CELL_PROBE_CANDIDATE_SETS:
         return DEFAULT_SUBMISSION_CANDIDATE_LIMIT
     if candidate_set in BURST_STACK_CANDIDATE_SETS:
@@ -1213,6 +1224,24 @@ def _weak_cell_probe_specs() -> list[CandidateSpec]:
     return specs
 
 
+def four_type_sanity_specs(
+    sink_gap_specs: Sequence[CandidateSpec],
+    weak_research_specs: Sequence[CandidateSpec],
+) -> tuple[CandidateSpec, ...]:
+    """Return a V2-style bounded sanity set touching all four families."""
+    destructive_specs = [
+        spec
+        for spec in weak_research_specs
+        if spec.family == LIVE_FILL_DESTRUCTIVE_WRITE
+    ][:4]
+    return tuple(
+        sorted(
+            [*sink_gap_specs, *destructive_specs],
+            key=lambda spec: spec.priority,
+        )
+    )
+
+
 def _email_specs() -> list[CandidateSpec]:
     email_targets = (
         ("email_1", "exfil", "urgent-system-config"),
@@ -1314,6 +1343,7 @@ def iter_candidate_specs(candidate_set: str = "full") -> tuple[CandidateSpec, ..
     page5_specs = tuple(sorted(_page5_mutation_specs(), key=lambda s: s.priority))
     sink_gap_specs = tuple(sorted(_sink_gap_specs(), key=lambda s: s.priority))
     weak_research_specs = tuple(sorted(_weak_research_specs(), key=lambda s: s.priority))
+    four_type_specs = four_type_sanity_specs(sink_gap_specs, weak_research_specs)
     weak_cell_probe_specs = tuple(sorted(_weak_cell_probe_specs(), key=lambda s: s.priority))
     specs = tuple(
         sorted(
@@ -1332,6 +1362,8 @@ def iter_candidate_specs(candidate_set: str = "full") -> tuple[CandidateSpec, ..
         return page5_specs
     if candidate_set in {"sink-gap", "sink_gap", "sinks"}:
         return sink_gap_specs
+    if candidate_set in FOUR_TYPE_SANITY_CANDIDATE_SETS:
+        return four_type_specs
     if candidate_set in WEAK_RESEARCH_CANDIDATE_SETS:
         return weak_research_specs
     if candidate_set in WEAK_CELL_PROBE_CANDIDATE_SETS:

@@ -24,6 +24,7 @@ from attack import (
     DEFAULT_BURST_CANDIDATE_LIMIT,
     DEFAULT_BURST_MIN_EVENTS,
     DEFAULT_BURST_STACK_SIZE,
+    DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT,
     DEFAULT_FULL_CANDIDATE_LIMIT,
     DEFAULT_SUBMISSION_CANDIDATE_LIMIT,
     DEFAULT_SUBMISSION_CANDIDATE_SET,
@@ -907,6 +908,32 @@ class ThroughputLiveFillTests(unittest.TestCase):
 
         self.assertEqual(25, family_counts[LIVE_FILL_UNTRUSTED_TO_ACTION])
         self.assertEqual(25, family_counts[LIVE_FILL_DESTRUCTIVE_WRITE])
+
+    def test_four_type_sanity_keeps_v2_floor_and_touches_all_families(self) -> None:
+        specs = iter_candidate_specs("submission-four-type-sanity")
+        sink_gap_specs = iter_candidate_specs("sink-gap")
+        first_variants = [spec.variant for spec in specs[: len(sink_gap_specs)]]
+        sink_gap_variants = [spec.variant for spec in sink_gap_specs]
+        families = {spec.family for spec in specs}
+
+        self.assertFalse(is_static_return_candidate_set("submission-four-type-sanity"))
+        self.assertEqual(DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT, len(specs))
+        self.assertEqual(
+            DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-four-type-sanity"),
+        )
+        self.assertEqual(sink_gap_variants, first_variants)
+        self.assertEqual(
+            {
+                LIVE_FILL_EXFIL,
+                LIVE_FILL_CONFUSED_DEPUTY,
+                LIVE_FILL_UNTRUSTED_TO_ACTION,
+                LIVE_FILL_DESTRUCTIVE_WRITE,
+            },
+            families,
+        )
+        for spec in specs:
+            self.assertEqual(spec.messages, validate_messages(spec.messages))
 
     def test_weak_cell_probe_opt_in_returns_static_candidates(self) -> None:
         env = FakeLiveFillEnv(fire=False)
