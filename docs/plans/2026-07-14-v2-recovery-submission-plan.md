@@ -122,6 +122,30 @@ path is valid again. To submit it, make a one-commit packaging branch that sets
 `DEFAULT_SUBMISSION_CANDIDATE_SET` to `submission-four-type-sanity`, package with
 a fresh matching slug/title, then restore the default afterward.
 
+## Post-Probe Static Scale-Up
+
+After one fresh probing submission succeeds on Kaggle, the next score-seeking
+path can be a static bank in the roughly 650-800 candidate range. The gate is
+strict: the probing submission must have `errorDescription is None`,
+`totalBytes > 0`, and a non-null `publicScore` from the Kaggle API.
+
+This static path should learn from both V2 and V4:
+
+- Keep V2's boring package mechanics: fresh matching slug/title, official model
+  sources, a small placeholder CSV, and no hidden-run live farming.
+- Avoid V4's weak point: do not return unvetted speculative candidates just
+  because they are diverse. Every static candidate should come from a local
+  prevalidation record with trace export and predicate evidence.
+- Prefer compact variants of families that have real replay signal, especially
+  exfiltration and confused-deputy traces, and include destructive-write or
+  untrusted-to-action only when they replay under the local gate.
+- Scale in one Kaggle direction only after a valid probe: first a smaller
+  static pilot if time allows, then the 650-800 bank. If Kaggle returns
+  `totalBytes=0`, null score, or an error, stop and debug packaging/replay
+  before increasing candidate count.
+- Switch the no-config default to the static bank only in the packaging commit
+  for that submission, then restore the V2-safe `full` default afterward.
+
 ## Stop Conditions
 
 Do not submit another high-yield or weak-family variant until the fresh sanity
