@@ -186,3 +186,27 @@ Date: 2026-07-13 15:46:48.610000
 Description: Weak-cell V4 50 candidate probe
 Status at registration: SubmissionStatus.PENDING
 ```
+
+## Final Outcome
+
+Checked on 2026-07-14:
+
+```text
+54652641  Weak-cell V4 50 candidate probe  SubmissionStatus.COMPLETE  publicScore=
+```
+
+The public score field was blank, while the earlier V2 submission still showed a visible `0.360` public score. Treat this V4 probe as failed / not useful evidence of weak-family transfer.
+
+The package also had a title/id mismatch:
+
+```text
+metadata id: temperancehong/ai-agent-security-high-yield-60
+metadata title: AI Agent Security Weak Cell V4 Probe
+visible ref used for submission: temperancehong/ai-agent-security-weak-cell-v4-probe
+```
+
+Follow-up issue:
+
+```text
+docs/issues/2026-07-14-v4-blank-score.md
+```

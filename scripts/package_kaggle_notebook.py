@@ -4,6 +4,7 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,6 +74,11 @@ def markdown_cell(source: str) -> dict[str, object]:
 def chunk_text(value: str, size: int = 76) -> list[str]:
     """Split encoded attack content into notebook-friendly chunks."""
     return [value[index : index + size] for index in range(0, len(value), size)]
+
+
+def slugify_title(title: str) -> str:
+    """Return the Kaggle-style slug implied by a notebook title."""
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
 
 
 def build_notebook(attack_source: bytes, attack_sha256: str) -> dict[str, object]:
@@ -296,6 +302,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--kernel-slug", default=DEFAULT_KERNEL_SLUG)
     parser.add_argument("--title", default=DEFAULT_KERNEL_TITLE)
     parser.add_argument(
+        "--allow-title-slug-mismatch",
+        action="store_true",
+        help=(
+            "Permit a title whose Kaggle-style slug does not match --kernel-slug. "
+            "Use only when intentionally relying on Kaggle title/id resolution."
+        ),
+    )
+    parser.add_argument(
         "--include-official-model-sources",
         action="store_true",
         help=(
@@ -314,6 +328,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    expected_slug = slugify_title(str(args.title))
+    actual_slug = str(args.kernel_slug)
+    if expected_slug != actual_slug and not args.allow_title_slug_mismatch:
+        raise SystemExit(
+            "Refusing to package notebook because --title implies slug "
+            f"{expected_slug!r}, but --kernel-slug is {actual_slug!r}. "
+            "Use a matching slug/title pair or pass --allow-title-slug-mismatch."
+        )
+
     model_sources = list(args.model_source)
     if args.include_official_model_sources:
         model_sources = [*OFFICIAL_GGUF_MODEL_SOURCES, *model_sources]
