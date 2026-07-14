@@ -172,3 +172,11 @@ before producing a valid scored output.
    turns.
 6. When polling Kaggle, inspect `errorDescription`, `totalBytes`, and
    `publicScore`; a blank score alone is not enough.
+
+## Follow-Up Applied
+
+The no-config default has been restored to the V2-style `full` path, whose
+first 8 candidates are the sink-gap candidates that produced the successful
+`0.360` public score. Notebook packaging now includes the official GGUF model
+sources by default, with `--no-official-model-sources` reserved for
+reproducing older artifacts.

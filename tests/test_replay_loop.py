@@ -908,9 +908,9 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual(25, family_counts[LIVE_FILL_UNTRUSTED_TO_ACTION])
         self.assertEqual(25, family_counts[LIVE_FILL_DESTRUCTIVE_WRITE])
 
-    def test_weak_cell_probe_default_returns_static_candidates(self) -> None:
+    def test_weak_cell_probe_opt_in_returns_static_candidates(self) -> None:
         env = FakeLiveFillEnv(fire=False)
-        algorithm = AttackAlgorithm()
+        algorithm = AttackAlgorithm(config={"candidate_set": "submission-weak-v4"})
 
         candidates = algorithm.run(
             env,
@@ -1325,7 +1325,11 @@ class DefaultSubmissionOrderingTests(unittest.TestCase):
         self.assertEqual(sink_gap_variants, first_default_variants)
         self.assertTrue(all(variant.startswith("sink-gap-") for variant in first_default_variants))
         self.assertEqual(DEFAULT_FULL_CANDIDATE_LIMIT, default_candidate_limit("full"))
-        self.assertEqual("submission-weak-v4", DEFAULT_SUBMISSION_CANDIDATE_SET)
+        self.assertEqual("full", DEFAULT_SUBMISSION_CANDIDATE_SET)
+        self.assertEqual(
+            DEFAULT_FULL_CANDIDATE_LIMIT,
+            default_candidate_limit(DEFAULT_SUBMISSION_CANDIDATE_SET),
+        )
         self.assertEqual(50, DEFAULT_SUBMISSION_CANDIDATE_LIMIT)
         self.assertEqual(DEFAULT_SUBMISSION_CANDIDATE_LIMIT, len(weak_probe_specs))
         self.assertEqual(

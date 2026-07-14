@@ -110,6 +110,5 @@ The package script now refuses to package a notebook when the Kaggle-style slug 
 For the next submission:
 
 1. Use a clean matching slug/title pair.
-2. First submit a small known-good high-yield sanity version to verify the Kaggle submission path still produces a visible score.
+2. First submit a small known-good sink-gap sanity version to verify the Kaggle submission path still produces a visible score.
 3. Then test weak-family probes only after they pass at least one stricter local replay gate or are mixed behind known-good scoring candidates.
-

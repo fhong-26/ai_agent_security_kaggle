@@ -311,10 +311,20 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--include-official-model-sources",
+        dest="include_official_model_sources",
         action="store_true",
         help=(
             "Attach the public GPT-OSS and Gemma GGUF Kaggle model sources used "
-            "by the starter/public notebooks. Internet remains disabled."
+            "by the starter/public notebooks. This is the default; internet remains disabled."
+        ),
+    )
+    parser.add_argument(
+        "--no-official-model-sources",
+        dest="include_official_model_sources",
+        action="store_false",
+        help=(
+            "Do not attach the public GPT-OSS and Gemma GGUF model sources. "
+            "Use only for reproducing older submissions or mount diagnostics."
         ),
     )
     parser.add_argument(
@@ -323,6 +333,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Additional Kaggle model source ref to attach to kernel metadata.",
     )
+    parser.set_defaults(include_official_model_sources=True)
     return parser.parse_args()
 
 
