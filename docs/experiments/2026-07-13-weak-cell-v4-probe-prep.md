@@ -210,3 +210,25 @@ Follow-up issue:
 ```text
 docs/issues/2026-07-14-v4-blank-score.md
 ```
+
+## V4 Retry
+
+The same Kaggle kernel version `4` was resubmitted on 2026-07-14 after the first completed submission showed a blank public score.
+
+Command:
+
+```bash
+.venv/bin/kaggle competitions submit \
+  -c ai-agent-security-multi-step-tool-attacks \
+  -f submission.csv \
+  -k temperancehong/ai-agent-security-weak-cell-v4-probe \
+  -v 4 \
+  -m "Retry weak-cell V4 kernel version 4"
+```
+
+Registration:
+
+```text
+Submission ref: 54665813
+Status at registration: SubmissionStatus.PENDING
+```
