@@ -129,6 +129,13 @@ path can be a static bank in the roughly 650-800 candidate range. The gate is
 strict: the probing submission must have `errorDescription is None`,
 `totalBytes > 0`, and a non-null `publicScore` from the Kaggle API.
 
+As of 2026-07-15, this path is blocked by a likely Kaggle evaluator/platform
+regression: even an exact rerun of the previously successful V2 notebook failed
+with `Submission Format Error`, `totalBytes=0`, and null score. See
+`docs/issues/2026-07-15-kaggle-format-error-platform-regression.md`. Do not
+spend a 650-800 candidate submission until an exact small probe scores again or
+the host confirms the evaluator issue is fixed.
+
 This static path should learn from both V2 and V4:
 
 - Keep V2's boring package mechanics: fresh matching slug/title, official model
