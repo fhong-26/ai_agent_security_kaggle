@@ -118,7 +118,25 @@ publicScore: null
 
 ## Decision
 
-Wait for hidden replay. If this succeeds, the exact 21-cell bank is safe to
-compare against the broader V4 weak-cell submissions. If it fails while the V2
-canary remains healthy, suspect either weak-family transfer brittleness or
-private guardrail blocking rather than notebook packaging.
+Hidden replay completed cleanly:
+
+```text
+54780348  Weak unique 21-cell bank probe
+status: COMPLETE
+totalBytes: 88
+errorDescription: ""
+publicScore: 0.000
+```
+
+Interpret this as a real negative transfer result. Unlike the 2026-07-14 V3/V4
+format failures, this submission produced a valid scorer output, so the exact
+21-cell weak-family bank did not score on the public evaluator.
+
+Do not scale this bank into a 650-800 static weak-family submission. The result
+confirms the earlier local caveat: these candidates were mined under
+`guardrail=none`, while the public path blocks or suppresses direct
+`UNTRUSTED_TO_ACTION` and `DESTRUCTIVE_WRITE` shapes.
+
+Next action: preserve weak-family cells as research/mutation seeds, but spend
+public-score submission budget on the V2-proven sink-gap/high-yield
+`EXFILTRATION` and `CONFUSED_DEPUTY` path.
