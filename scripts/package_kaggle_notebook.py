@@ -238,14 +238,16 @@ def build_submission_notebook(
     kernel_slug: str,
     title: str,
     *,
+    attack_file: Path,
+    attack_source_ref: str,
     model_sources: list[str],
 ) -> dict[str, str | int | list[str]]:
     """Create a Kaggle kernel folder that can be pushed as a notebook version."""
-    attack_source = ATTACK_FILE.read_bytes()
-    compile(attack_source.decode("utf-8"), str(ATTACK_FILE), "exec")
+    attack_path = attack_file.resolve()
+    attack_source = attack_path.read_bytes()
+    compile(attack_source.decode("utf-8"), str(attack_path), "exec")
 
     repo_commit = current_git_commit()
-    attack_source_commit = current_git_commit("attack.py")
     attack_sha256 = sha256_bytes(attack_source)
 
     output_dir = SUBMISSIONS_DIR / f"{label}-{repo_commit}-notebook"
@@ -274,7 +276,8 @@ def build_submission_notebook(
     manifest: dict[str, str | int] = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "repo_commit": repo_commit,
-        "attack_source_commit": attack_source_commit,
+        "attack_file": str(attack_path),
+        "attack_source_ref": attack_source_ref,
         "attack_py_bytes": len(attack_source),
         "attack_py_sha256": attack_sha256,
         "kernel_ref": f"{KAGGLE_USER}/{kernel_slug}",
@@ -301,6 +304,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--kernel-slug", default=DEFAULT_KERNEL_SLUG)
     parser.add_argument("--title", default=DEFAULT_KERNEL_TITLE)
+    parser.add_argument(
+        "--attack-file",
+        type=Path,
+        default=ATTACK_FILE,
+        help="Path to attack.py source to embed in the notebook.",
+    )
+    parser.add_argument(
+        "--attack-source-ref",
+        default=current_git_commit("attack.py"),
+        help="Human-readable source ref to record in the manifest.",
+    )
     parser.add_argument(
         "--allow-title-slug-mismatch",
         action="store_true",
@@ -356,6 +370,8 @@ def main() -> int:
         str(args.label),
         str(args.kernel_slug),
         str(args.title),
+        attack_file=Path(args.attack_file),
+        attack_source_ref=str(args.attack_source_ref),
         model_sources=model_sources,
     )
     print(json.dumps(manifest, indent=2))
