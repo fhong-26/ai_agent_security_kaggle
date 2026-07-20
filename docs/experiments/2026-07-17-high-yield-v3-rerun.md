@@ -92,6 +92,21 @@ url: /code/temperancehong/ai-agent-security-high-yield-60-rerun?scriptVersionId=
 
 ## Decision
 
-Wait for Kaggle hidden replay. If this fails with a format error after the V2
-canary succeeded, treat it as evidence that the 1,000 live-fill V3 path itself
-is too expensive or brittle, not merely a platform outage.
+Hidden replay completed with the same format-error signature as the original
+larger V3/V4 failures:
+
+```text
+54780086  High yield V3 60-score rerun after canary success
+status: COMPLETE
+totalBytes: 0
+publicScore: null
+errorDescription: Your notebook generated a submission file with incorrect format.
+```
+
+Because the exact V2 canary succeeded on the same day and the 21-candidate
+static weak-family probe produced a valid `0.000` scorer output, treat this as
+evidence that the 1,000-candidate live-fill V3 path is too expensive or brittle
+under hidden replay.
+
+Next action: use smaller static pilots from the proven `EXFILTRATION` path
+before attempting any 650-800 candidate bank.
