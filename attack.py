@@ -16,6 +16,7 @@ DEFAULT_FULL_CANDIDATE_LIMIT: Final[int] = 8
 DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT: Final[int] = 12
 DEFAULT_SUBMISSION_CANDIDATE_LIMIT: Final[int] = 50
 DEFAULT_SUBMISSION_CANDIDATE_SET: Final[str] = "full"
+DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT: Final[int] = 128
 DEFAULT_WEAK_UNIQUE_CELL_CANDIDATE_LIMIT: Final[int] = 21
 HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT: Final[int] = 1_000
 DEFAULT_BURST_STACK_SIZE: Final[int] = 8
@@ -85,7 +86,16 @@ WEAK_UNIQUE_CELL_CANDIDATE_SETS: Final[set[str]] = {
     "unique-cell-bank",
     "unique_cell_bank",
 }
+STATIC_EXFIL_CANDIDATE_SETS: Final[set[str]] = {
+    "static-exfil-128",
+    "static_exfil_128",
+    "static-exfil-pilot",
+    "static_exfil_pilot",
+    "submission-static-exfil-128",
+    "submission_static_exfil_128",
+}
 STATIC_RETURN_CANDIDATE_SETS: Final[set[str]] = {
+    *STATIC_EXFIL_CANDIDATE_SETS,
     *WEAK_CELL_PROBE_CANDIDATE_SETS,
     *WEAK_UNIQUE_CELL_CANDIDATE_SETS,
 }
@@ -641,6 +651,8 @@ def default_candidate_limit(candidate_set: str) -> int:
         return DEFAULT_FULL_CANDIDATE_LIMIT
     if candidate_set in FOUR_TYPE_SANITY_CANDIDATE_SETS:
         return DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT
+    if candidate_set in STATIC_EXFIL_CANDIDATE_SETS:
+        return DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT
     if candidate_set in WEAK_UNIQUE_CELL_CANDIDATE_SETS:
         return DEFAULT_WEAK_UNIQUE_CELL_CANDIDATE_LIMIT
     if candidate_set in WEAK_CELL_PROBE_CANDIDATE_SETS:
@@ -1238,6 +1250,21 @@ def _weak_cell_probe_specs() -> list[CandidateSpec]:
     return specs
 
 
+def _static_exfil_specs() -> list[CandidateSpec]:
+    """Return compact one-message EXFIL probes for static replay pilots."""
+    return [
+        CandidateSpec(
+            family=LIVE_FILL_EXFIL,
+            messages=(throughput_message(index),),
+            source="user",
+            target="http-post-marker",
+            variant=f"static-exfil-{throughput_label(index)}",
+            priority=-500 + index,
+        )
+        for index in range(MAX_RETURNED_CANDIDATES)
+    ]
+
+
 def _weak_unique_cell_specs() -> list[CandidateSpec]:
     """Return the exact 21-row mined unique scoring-cell probe."""
     bank: tuple[tuple[str, str, tuple[str, ...]], ...] = (
@@ -1556,6 +1583,7 @@ def iter_candidate_specs(candidate_set: str = "full") -> tuple[CandidateSpec, ..
     weak_research_specs = tuple(sorted(_weak_research_specs(), key=lambda s: s.priority))
     four_type_specs = four_type_sanity_specs(sink_gap_specs, weak_research_specs)
     weak_cell_probe_specs = tuple(sorted(_weak_cell_probe_specs(), key=lambda s: s.priority))
+    static_exfil_specs = tuple(sorted(_static_exfil_specs(), key=lambda s: s.priority))
     weak_unique_cell_specs = tuple(sorted(_weak_unique_cell_specs(), key=lambda s: s.priority))
     specs = tuple(
         sorted(
@@ -1578,6 +1606,8 @@ def iter_candidate_specs(candidate_set: str = "full") -> tuple[CandidateSpec, ..
         return four_type_specs
     if candidate_set in WEAK_RESEARCH_CANDIDATE_SETS:
         return weak_research_specs
+    if candidate_set in STATIC_EXFIL_CANDIDATE_SETS:
+        return static_exfil_specs
     if candidate_set in WEAK_UNIQUE_CELL_CANDIDATE_SETS:
         return weak_unique_cell_specs
     if candidate_set in WEAK_CELL_PROBE_CANDIDATE_SETS:

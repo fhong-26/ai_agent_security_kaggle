@@ -26,6 +26,7 @@ from attack import (
     DEFAULT_BURST_STACK_SIZE,
     DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT,
     DEFAULT_FULL_CANDIDATE_LIMIT,
+    DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT,
     DEFAULT_SUBMISSION_CANDIDATE_LIMIT,
     DEFAULT_SUBMISSION_CANDIDATE_SET,
     DEFAULT_WEAK_UNIQUE_CELL_CANDIDATE_LIMIT,
@@ -37,6 +38,7 @@ from attack import (
     LIVE_FILL_EXFIL,
     LIVE_FILL_UNTRUSTED_TO_ACTION,
     MAX_CANDIDATE_MESSAGES,
+    MAX_RETURNED_CANDIDATES,
     THROUGHPUT_PAYLOAD,
     CandidateSpec,
     burst_stack_messages,
@@ -910,6 +912,35 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual(25, family_counts[LIVE_FILL_UNTRUSTED_TO_ACTION])
         self.assertEqual(25, family_counts[LIVE_FILL_DESTRUCTIVE_WRITE])
 
+    def test_static_exfil_pilot_has_compact_128_shape(self) -> None:
+        specs = iter_candidate_specs("submission-static-exfil-128")
+        first_messages = [spec.messages[0] for spec in specs[:3]]
+
+        self.assertTrue(is_static_return_candidate_set("submission-static-exfil-128"))
+        self.assertEqual(MAX_RETURNED_CANDIDATES, len(specs))
+        self.assertEqual(
+            DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-static-exfil-128"),
+        )
+        self.assertEqual(
+            [
+                throughput_message(0),
+                throughput_message(1),
+                throughput_message(2),
+            ],
+            first_messages,
+        )
+        self.assertEqual(
+            {"static-exfil-aa", "static-exfil-ab", "static-exfil-ac"},
+            {spec.variant for spec in specs[:3]},
+        )
+        for spec in specs[:DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT]:
+            self.assertEqual(LIVE_FILL_EXFIL, spec.family)
+            self.assertEqual("user", spec.source)
+            self.assertEqual("http-post-marker", spec.target)
+            self.assertEqual(1, len(spec.messages))
+            self.assertEqual(spec.messages, validate_messages(spec.messages))
+
     def test_weak_unique_cell_probe_preserves_mined_10_by_11_bank(self) -> None:
         specs = iter_candidate_specs("submission-weak-unique-21")
         family_counts = {
@@ -987,6 +1018,30 @@ class ThroughputLiveFillTests(unittest.TestCase):
                 LIVE_FILL_DESTRUCTIVE_WRITE,
             },
             {attempt["family"] for attempt in algorithm.last_run_details},
+        )
+
+    def test_static_exfil_pilot_opt_in_returns_static_candidates(self) -> None:
+        env = FakeLiveFillEnv(fire=False)
+        algorithm = AttackAlgorithm(config={"candidate_set": "submission-static-exfil-128"})
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=200, max_tool_hops=4),
+        )
+
+        self.assertEqual(DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT, len(candidates))
+        self.assertEqual(0, env.interactions)
+        self.assertEqual(
+            {"return_unvalidated"},
+            {attempt["decision"] for attempt in algorithm.last_run_details},
+        )
+        self.assertEqual(
+            {LIVE_FILL_EXFIL},
+            {attempt["family"] for attempt in algorithm.last_run_details},
+        )
+        self.assertEqual(
+            [throughput_message(0), throughput_message(1), throughput_message(2)],
+            [attempt["messages"][0] for attempt in algorithm.last_run_details[:3]],
         )
 
     def test_weak_unique_cell_probe_opt_in_returns_static_candidates(self) -> None:
