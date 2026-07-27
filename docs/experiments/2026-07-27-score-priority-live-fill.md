@@ -67,8 +67,8 @@ The tests verify:
 
 ## Real-Model Result
 
-Not run in this loop. This change is intentionally mock-first and should be
-submitted only after a small real/Kaggle canary confirms timeout behavior.
+Not complete yet. The Kaggle submission is now pending; public/private replay
+results are the next validation gate.
 
 ## Predicate Hits And Score Impact
 
@@ -98,6 +98,84 @@ The only change is scheduler order.
 
 ## Decision
 
-Keep. Use `candidate_set=live-score-priority` as the next opt-in live-fill
-experiment after static rungs confirm headroom. Do not replace `live-high-yield`
-yet; keep it as the round-robin comparison baseline.
+Keep. `candidate_set=live-score-priority` has now been pushed as an opt-in
+Kaggle submission. Do not replace `live-high-yield` yet; keep it as the
+round-robin comparison baseline.
+
+## Packaging And Submission
+
+Generated a submission-specific source copy so the committed repo default stays
+`full`:
+
+```text
+runs/submission-sources/score-priority-live-fill/attack.py
+DEFAULT_SUBMISSION_CANDIDATE_SET: live-score-priority
+attack.py bytes: 85597
+attack.py sha256: 92c75a63d6b44e8794c4446f14c73ed84504b552dd0a43834a448936dc03e43f
+resolved default candidate limit: 1000
+resolved families: ('exfil', 'confused_deputy')
+```
+
+Packaged with:
+
+```bash
+PYTHONPATH=third_party/kaggle_ai_agent_security \
+.venv/bin/python scripts/package_kaggle_notebook.py \
+  --label score-priority-live-fill \
+  --kernel-slug ai-agent-security-score-priority-live-fill \
+  --title "AI Agent Security Score Priority Live Fill" \
+  --attack-file runs/submission-sources/score-priority-live-fill/attack.py \
+  --attack-source-ref "8bb35d8 default=live-score-priority sha256=92c75a63d6b44e8794c4446f14c73ed84504b552dd0a43834a448936dc03e43f"
+```
+
+Generated kernel package:
+
+```text
+kernel_ref: temperancehong/ai-agent-security-score-priority-live-fill
+kernel_dir: submissions/score-priority-live-fill-8bb35d8-notebook/kernel
+notebook_sha256: 9996961a11ee5be1c9ec0c9c4acaaf7e6518484cec171ff3c930f22012f54b98
+metadata_sha256: 740aa953b427526d55ad5dda9208304930f3d52bd4687e16cf873026dd91eedd
+model_sources:
+- llkh0a/gemma-4-26b-a4b-it-ud-q4-k-m-gguf/PyTorch/default/1
+- llkh0a/gpt-oss-20b-gguf/PyTorch/default/1
+```
+
+Pushed kernel version 1:
+
+```bash
+.venv/bin/kaggle kernels push \
+  -p submissions/score-priority-live-fill-8bb35d8-notebook/kernel
+```
+
+Kernel status after push:
+
+```text
+temperancehong/ai-agent-security-score-priority-live-fill
+KernelWorkerStatus.COMPLETE
+```
+
+Submitted kernel version 1:
+
+```bash
+KAGGLE_API_TOKEN="$(.venv/bin/kaggle auth print-access-token)" \
+.venv/bin/kaggle competitions submit \
+  -c ai-agent-security-multi-step-tool-attacks \
+  -f submission.csv \
+  -k temperancehong/ai-agent-security-score-priority-live-fill \
+  -v 1 \
+  -m "Score-priority live fill"
+```
+
+Initial Kaggle status:
+
+```text
+55032211  submission.csv  2026-07-27 15:14:03.113000
+description: Score-priority live fill
+status: SubmissionStatus.PENDING
+publicScore: null
+privateScore: null
+```
+
+Note: plain `kaggle competitions submit` did not pick up the OAuth credential
+file on this machine, so the command bridged the active OAuth access token into
+`KAGGLE_API_TOKEN` without printing the token.
