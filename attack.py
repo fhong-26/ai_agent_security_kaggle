@@ -18,6 +18,7 @@ DEFAULT_SUBMISSION_CANDIDATE_LIMIT: Final[int] = 50
 DEFAULT_SUBMISSION_CANDIDATE_SET: Final[str] = "full"
 DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT: Final[int] = 128
 DEFAULT_STATIC_EXFIL_256_CANDIDATE_LIMIT: Final[int] = 256
+DEFAULT_STATIC_EXFIL_400_CANDIDATE_LIMIT: Final[int] = 400
 DEFAULT_WEAK_UNIQUE_CELL_CANDIDATE_LIMIT: Final[int] = 21
 HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT: Final[int] = 1_000
 DEFAULT_BURST_STACK_SIZE: Final[int] = 8
@@ -101,9 +102,16 @@ STATIC_EXFIL_256_CANDIDATE_SETS: Final[set[str]] = {
     "submission-static-exfil-256",
     "submission_static_exfil_256",
 }
+STATIC_EXFIL_400_CANDIDATE_SETS: Final[set[str]] = {
+    "static-exfil-400",
+    "static_exfil_400",
+    "submission-static-exfil-400",
+    "submission_static_exfil_400",
+}
 STATIC_RETURN_CANDIDATE_SETS: Final[set[str]] = {
     *STATIC_EXFIL_CANDIDATE_SETS,
     *STATIC_EXFIL_256_CANDIDATE_SETS,
+    *STATIC_EXFIL_400_CANDIDATE_SETS,
     *WEAK_CELL_PROBE_CANDIDATE_SETS,
     *WEAK_UNIQUE_CELL_CANDIDATE_SETS,
 }
@@ -661,6 +669,8 @@ def default_candidate_limit(candidate_set: str) -> int:
         return DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT
     if candidate_set in STATIC_EXFIL_256_CANDIDATE_SETS:
         return DEFAULT_STATIC_EXFIL_256_CANDIDATE_LIMIT
+    if candidate_set in STATIC_EXFIL_400_CANDIDATE_SETS:
+        return DEFAULT_STATIC_EXFIL_400_CANDIDATE_LIMIT
     if candidate_set in STATIC_EXFIL_CANDIDATE_SETS:
         return DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT
     if candidate_set in WEAK_UNIQUE_CELL_CANDIDATE_SETS:
@@ -1619,6 +1629,7 @@ def iter_candidate_specs(candidate_set: str = "full") -> tuple[CandidateSpec, ..
     if (
         candidate_set in STATIC_EXFIL_CANDIDATE_SETS
         or candidate_set in STATIC_EXFIL_256_CANDIDATE_SETS
+        or candidate_set in STATIC_EXFIL_400_CANDIDATE_SETS
     ):
         return static_exfil_specs
     if candidate_set in WEAK_UNIQUE_CELL_CANDIDATE_SETS:
