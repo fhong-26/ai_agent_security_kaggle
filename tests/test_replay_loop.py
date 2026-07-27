@@ -51,6 +51,7 @@ from attack import (
     is_auto_portfolio_candidate_set,
     is_burst_stack_candidate_set,
     is_live_fill_candidate_set,
+    is_score_priority_candidate_set,
     is_static_return_candidate_set,
     is_throughput_candidate_set,
     iter_candidate_specs,
@@ -482,6 +483,11 @@ class ThroughputLiveFillTests(unittest.TestCase):
             live_fill_families("live-all"),
         )
         self.assertEqual(HIGH_YIELD_LIVE_FILL_FAMILIES, live_fill_families("live-high-yield"))
+        self.assertTrue(is_score_priority_candidate_set("live-score-priority"))
+        self.assertEqual(
+            HIGH_YIELD_LIVE_FILL_FAMILIES,
+            live_fill_families("live-score-priority"),
+        )
 
         confused = confused_deputy_message(0).lower()
         destructive = destructive_write_message(0).lower()
@@ -1259,6 +1265,72 @@ class ThroughputLiveFillTests(unittest.TestCase):
             ],
             [attempt["family"] for attempt in algorithm.last_run_details],
         )
+
+    def test_score_priority_mode_exhausts_exfil_when_productive(self) -> None:
+        env = FakeLiveFillEnv(
+            fire=True,
+            fired_families={LIVE_FILL_EXFIL, LIVE_FILL_CONFUSED_DEPUTY},
+        )
+        algorithm = AttackAlgorithm(
+            {
+                "candidate_set": "live-score-priority",
+                "max_candidates": 4,
+                "live_fill_max_attempts": 4,
+                "live_fill_warmup": False,
+                "live_fill_margin_s": 0.0,
+                "live_fill_slowest0_s": 0.0,
+                "live_fill_slowest_mult": 1.0,
+            }
+        )
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=10, max_tool_hops=4),
+        )
+
+        self.assertEqual(4, len(candidates))
+        self.assertEqual(
+            [
+                LIVE_FILL_EXFIL,
+                LIVE_FILL_EXFIL,
+                LIVE_FILL_EXFIL,
+                LIVE_FILL_EXFIL,
+            ],
+            [attempt["family"] for attempt in algorithm.last_run_details],
+        )
+
+    def test_score_priority_mode_falls_back_when_exfil_stalls(self) -> None:
+        env = FakeLiveFillEnv(
+            fire=True,
+            fired_families={LIVE_FILL_CONFUSED_DEPUTY},
+        )
+        algorithm = AttackAlgorithm(
+            {
+                "candidate_set": "live-score-priority",
+                "max_candidates": 2,
+                "live_fill_max_attempts": 4,
+                "live_fill_warmup": False,
+                "live_fill_margin_s": 0.0,
+                "live_fill_slowest0_s": 0.0,
+                "live_fill_slowest_mult": 1.0,
+            }
+        )
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=10, max_tool_hops=4),
+        )
+
+        self.assertEqual(2, len(candidates))
+        self.assertEqual(
+            [
+                LIVE_FILL_EXFIL,
+                LIVE_FILL_CONFUSED_DEPUTY,
+                LIVE_FILL_CONFUSED_DEPUTY,
+            ],
+            [attempt["family"] for attempt in algorithm.last_run_details],
+        )
+        self.assertTrue(algorithm.last_run_details[0].get("family_disabled"))
 
     def test_live_all_can_disable_nonproductive_families(self) -> None:
         env = FakeLiveFillEnv(

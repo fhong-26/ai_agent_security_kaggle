@@ -130,6 +130,14 @@ HIGH_YIELD_CANDIDATE_SETS: Final[set[str]] = {
     "live-exfil-confused",
     "live_exfil_confused",
 }
+SCORE_PRIORITY_CANDIDATE_SETS: Final[set[str]] = {
+    "live-score-priority",
+    "live_score_priority",
+    "score-priority-live",
+    "score_priority_live",
+    "exfil-first-live",
+    "exfil_first_live",
+}
 BURST_STACK_CANDIDATE_SETS: Final[set[str]] = {
     "live-burst",
     "live_burst",
@@ -174,6 +182,7 @@ LIVE_FILL_CANDIDATE_SETS: Final[dict[str, tuple[str, ...]]] = {
     **{name: (LIVE_FILL_DESTRUCTIVE_WRITE,) for name in DESTRUCTIVE_WRITE_CANDIDATE_SETS},
     **{name: ALL_LIVE_FILL_FAMILIES for name in LIVE_ALL_CANDIDATE_SETS},
     **{name: HIGH_YIELD_LIVE_FILL_FAMILIES for name in HIGH_YIELD_CANDIDATE_SETS},
+    **{name: HIGH_YIELD_LIVE_FILL_FAMILIES for name in SCORE_PRIORITY_CANDIDATE_SETS},
     **{name: ALL_LIVE_FILL_FAMILIES for name in AUTO_PORTFOLIO_CANDIDATE_SETS},
 }
 LIVE_FILL_PREDICATES: Final[dict[str, str]] = {
@@ -681,6 +690,8 @@ def default_candidate_limit(candidate_set: str) -> int:
         return DEFAULT_BURST_CANDIDATE_LIMIT
     if candidate_set in HIGH_YIELD_CANDIDATE_SETS:
         return HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT
+    if candidate_set in SCORE_PRIORITY_CANDIDATE_SETS:
+        return HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT
     if candidate_set in AUTO_PORTFOLIO_CANDIDATE_SETS:
         return HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT
     return MAX_RETURNED_CANDIDATES
@@ -704,6 +715,11 @@ def is_burst_stack_candidate_set(candidate_set: str) -> bool:
 def is_auto_portfolio_candidate_set(candidate_set: str) -> bool:
     """Return whether a candidate-set name selects the auto/timeit portfolio mode."""
     return candidate_set in AUTO_PORTFOLIO_CANDIDATE_SETS
+
+
+def is_score_priority_candidate_set(candidate_set: str) -> bool:
+    """Return whether live-fill should exhaust higher-value families first."""
+    return candidate_set in SCORE_PRIORITY_CANDIDATE_SETS
 
 
 def is_static_return_candidate_set(candidate_set: str) -> bool:
@@ -1698,7 +1714,14 @@ class AttackAlgorithm(AttackAlgorithmBase):
             )
 
         if is_live_fill_candidate_set(candidate_set):
-            default_fail_cap = 1 if is_auto_portfolio_candidate_set(candidate_set) else 0
+            default_fail_cap = (
+                1
+                if (
+                    is_auto_portfolio_candidate_set(candidate_set)
+                    or is_score_priority_candidate_set(candidate_set)
+                )
+                else 0
+            )
             return self._run_live_fill(
                 env,
                 tb=tb,
@@ -1706,6 +1729,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
                 max_tool_hops=max_tool_hops,
                 families=live_fill_families(candidate_set),
                 default_family_fail_cap=default_fail_cap,
+                prefer_first_family=is_score_priority_candidate_set(candidate_set),
             )
 
         attempts: list[dict[str, Any]] = []
@@ -2039,6 +2063,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
         max_tool_hops: int,
         families: tuple[str, ...],
         default_family_fail_cap: int = 0,
+        prefer_first_family: bool = False,
     ) -> list[AttackCandidate]:
         """Validate live-fill prompts and return only the ones that fired."""
         payload = str(self.config.get("throughput_payload", THROUGHPUT_PAYLOAD))
@@ -2176,7 +2201,10 @@ class AttackAlgorithm(AttackAlgorithmBase):
             if remaining_s <= reserve_s:
                 break
 
-            family = active_families[family_cursor % len(active_families)]
+            if prefer_first_family:
+                family = active_families[0]
+            else:
+                family = active_families[family_cursor % len(active_families)]
             index = family_indexes[family]
             family_indexes[family] += 1
             candidate_attempts += 1
@@ -2292,7 +2320,8 @@ class AttackAlgorithm(AttackAlgorithmBase):
                     if active_families:
                         family_cursor %= len(active_families)
                     continue
-            family_cursor += 1
+            if not prefer_first_family:
+                family_cursor += 1
 
         self.last_run_details = attempts
         return [
