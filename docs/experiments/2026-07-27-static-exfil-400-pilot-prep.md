@@ -92,9 +92,42 @@ Checked during this prep:
 54852313  Static EXFIL 128 pilot  SubmissionStatus.COMPLETE  publicScore=11.520
 ```
 
+## Packaging
+
+Packaged after implementation commit `ead7965` with:
+
+```bash
+PYTHONPATH=third_party/kaggle_ai_agent_security \
+.venv/bin/python scripts/package_kaggle_notebook.py \
+  --label static-exfil-400-pilot \
+  --kernel-slug ai-agent-security-static-exfil-400-pilot \
+  --title "AI Agent Security Static Exfil 400 Pilot" \
+  --attack-file runs/submission-sources/static-exfil-400-pilot/attack.py \
+  --attack-source-ref "ead7965 default=submission-static-exfil-400"
+```
+
+Generated kernel package:
+
+```text
+kernel_ref: temperancehong/ai-agent-security-static-exfil-400-pilot
+kernel_dir: submissions/static-exfil-400-pilot-ead7965-notebook/kernel
+notebook_sha256: e0b74792ba990072223eabab3c1441cf005f1ce1a559d3d5297c4114a19f5c80
+metadata_sha256: 9c6b9a3184f3cc0a2f261958b6097369a588b76e913d6f41abcfbfef1919ff4d
+model_sources:
+- llkh0a/gemma-4-26b-a4b-it-ud-q4-k-m-gguf/PyTorch/default/1
+- llkh0a/gpt-oss-20b-gguf/PyTorch/default/1
+```
+
+Push command to run only after the 256 pilot completes successfully:
+
+```bash
+.venv/bin/kaggle kernels push \
+  -p submissions/static-exfil-400-pilot-ead7965-notebook/kernel
+```
+
 ## Decision
 
-Keep and package next, but wait to submit until `55028148` completes.
+Keep packaged, but wait to submit until `55028148` completes.
 
 Next action:
 
