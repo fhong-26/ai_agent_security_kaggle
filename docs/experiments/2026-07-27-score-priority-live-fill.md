@@ -67,8 +67,25 @@ The tests verify:
 
 ## Real-Model Result
 
-Not complete yet. The Kaggle submission is now pending; public/private replay
-results are the next validation gate.
+Complete.
+
+```text
+55032211  submission.csv  2026-07-27 15:14:03.113000
+description: Score-priority live fill
+status: SubmissionStatus.COMPLETE
+publicScore: 61.085
+privateScore: null
+```
+
+Downloaded normal kernel output on 2026-07-28 and verified Kaggle received the
+intended source:
+
+```text
+runs/kaggle-score-priority-live-fill-output-20260728T083422Z/attack.py
+DEFAULT_SUBMISSION_CANDIDATE_SET: live-score-priority
+attack.py bytes: 85597
+attack.py sha256: 92c75a63d6b44e8794c4446f14c73ed84504b552dd0a43834a448936dc03e43f
+```
 
 ## Predicate Hits And Score Impact
 
@@ -82,6 +99,14 @@ CONFUSED_DEPUTY candidate ~= lower severity + 2 unique
 Compared with old `live-high-yield` round-robin, `live-score-priority` should
 increase expected raw score whenever direct exfil remains reliable, because it
 does not spend every other attempt on the lower-value family.
+
+The public score strongly suggests the budget was dominated by direct
+`EXFILTRATION`. The submitted mode includes both strong families, but the
+scheduler always picks `EXFILTRATION` while it keeps firing and only moves to
+`CONFUSED_DEPUTY` after an exfil failure/error/invalid attempt. Hidden replay
+logs are not exposed, so we cannot prove the exact final family mix, but this
+score should be treated as an exfil-throughput win with confused-deputy as a
+backup path.
 
 ## Replayability Evidence
 
@@ -173,6 +198,16 @@ Initial Kaggle status:
 description: Score-priority live fill
 status: SubmissionStatus.PENDING
 publicScore: null
+privateScore: null
+```
+
+Completed Kaggle status:
+
+```text
+55032211  submission.csv  2026-07-27 15:14:03.113000
+description: Score-priority live fill
+status: SubmissionStatus.COMPLETE
+publicScore: 61.085
 privateScore: null
 ```
 

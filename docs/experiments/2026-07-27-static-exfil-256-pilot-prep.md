@@ -82,8 +82,19 @@ Mock-test result: the new `submission-static-exfil-256` path returns 256 static
 `AttackCandidate` rows without calling the live environment, preserving the same
 one-message `http.post` shape as the 128 pilot.
 
-Real-model result: not run locally. This path relies on Kaggle hidden replay as
-the real validation gate, matching the prior 128 pilot workflow.
+Real-model result: Kaggle hidden replay completed successfully.
+
+```text
+55028148  submission.csv  2026-07-27 12:02:51.920000
+description: Static EXFIL 256 pilot
+status: SubmissionStatus.COMPLETE
+publicScore: 23.960
+privateScore: null
+```
+
+The result is slightly above the simple linear expectation of `23.040`, so the
+256 static rung confirms the direct single-post `SECRET_MARKER` family still
+scales safely beyond 128 candidates.
 
 ## Packaging
 
@@ -111,9 +122,9 @@ model_sources:
 - llkh0a/gpt-oss-20b-gguf/PyTorch/default/1
 ```
 
-## Kaggle Push Status
+## Kaggle Push And Submission Status
 
-Attempted:
+Initial attempt:
 
 ```bash
 .venv/bin/kaggle kernels push \
@@ -126,8 +137,18 @@ Result:
 Authentication required to call the Kaggle API.
 ```
 
-Kaggle auth is not configured on this machine, so the kernel has not been pushed
-or submitted yet.
+Kaggle OAuth authentication was later bridged into `KAGGLE_API_TOKEN`, and the
+kernel/submission completed.
+
+Final Kaggle status:
+
+```text
+55028148  submission.csv  2026-07-27 12:02:51.920000
+description: Static EXFIL 256 pilot
+status: SubmissionStatus.COMPLETE
+publicScore: 23.960
+privateScore: null
+```
 
 ## Resume Commands
 
@@ -166,8 +187,7 @@ Then submit the kernel output filename:
 
 ## Decision
 
-Keep. The code, tests, validation, generated source, and notebook package are
-ready. The only blocker is missing local Kaggle authentication.
-
-If public score returns `23.040` with nonzero `totalBytes`, the next score move
-is a 384 or 400 static EXFIL pilot to clear 30+.
+Keep. The 256 static rung completed and scored above the linear expectation.
+The next static-only score move is the already packaged 400-candidate pilot, but
+the stronger immediate lesson is that live exfil-throughput can clear 60 when
+carefully budgeted.
