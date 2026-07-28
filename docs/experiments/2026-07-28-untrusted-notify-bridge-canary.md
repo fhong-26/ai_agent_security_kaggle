@@ -52,6 +52,10 @@ logic should count both:
 The family is also included in `live-all` so broad exploratory runs can try it,
 but score-priority/high-yield modes are unchanged.
 
+Default cap for this opt-in family: `200` candidates. That keeps the first
+Kaggle canary small while still being large enough to show a public-score signal
+if the bridge shape transfers.
+
 ## Commands Run
 
 ```bash
@@ -74,6 +78,7 @@ The tests verify:
 - The new candidate-set aliases route to `untrusted_notify_bridge`.
 - The generated candidate has exactly two user messages: source read, then
   `Notify ...`.
+- The opt-in canary default is capped at `200` candidates.
 - A synthetic `web.open -> email.send` trace scores both
   `UNTRUSTED_TO_ACTION` and `CONFUSED_DEPUTY`.
 - The live-fill loop keeps only bridge candidates whose exported trace has an

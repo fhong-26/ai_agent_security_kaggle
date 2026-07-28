@@ -31,6 +31,7 @@ from attack import (
     DEFAULT_STATIC_EXFIL_400_CANDIDATE_LIMIT,
     DEFAULT_SUBMISSION_CANDIDATE_LIMIT,
     DEFAULT_SUBMISSION_CANDIDATE_SET,
+    DEFAULT_UNTRUSTED_NOTIFY_BRIDGE_CANDIDATE_LIMIT,
     DEFAULT_WEAK_UNIQUE_CELL_CANDIDATE_LIMIT,
     DESTRUCTIVE_WRITE_VARIANTS,
     HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT,
@@ -473,7 +474,7 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertIn("url=http://ac.co", messages[2])
         self.assertEqual(messages, validate_messages(messages))
 
-    def test_live_fill_aliases_and_messages_cover_all_four_families(self) -> None:
+    def test_live_fill_aliases_and_messages_cover_all_families(self) -> None:
         self.assertEqual((LIVE_FILL_EXFIL,), live_fill_families("throughput-single"))
         self.assertEqual((LIVE_FILL_CONFUSED_DEPUTY,), live_fill_families("live-confused"))
         self.assertEqual(
@@ -483,6 +484,10 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual(
             (LIVE_FILL_UNTRUSTED_NOTIFY_BRIDGE,),
             live_fill_families("live-untrusted-notify-bridge"),
+        )
+        self.assertEqual(
+            DEFAULT_UNTRUSTED_NOTIFY_BRIDGE_CANDIDATE_LIMIT,
+            default_candidate_limit("live-untrusted-notify-bridge"),
         )
         self.assertEqual(
             (LIVE_FILL_DESTRUCTIVE_WRITE,),
