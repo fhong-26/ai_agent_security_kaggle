@@ -83,13 +83,20 @@ one-message `http.post` shape as the scoring 128 pilot and pending 256 pilot.
 Real-model result: not run locally. This static path relies on Kaggle hidden
 replay as the validation gate, matching the proven 128 pilot workflow.
 
-## Current Kaggle Status
+## Kaggle Status
 
-Checked during this prep:
+Checked during prep:
 
 ```text
 55028148  Static EXFIL 256 pilot  SubmissionStatus.PENDING
 54852313  Static EXFIL 128 pilot  SubmissionStatus.COMPLETE  publicScore=11.520
+```
+
+Updated on 2026-07-28 after the 256 pilot completed:
+
+```text
+55028148  Static EXFIL 256 pilot  SubmissionStatus.COMPLETE  publicScore=23.960
+55050309  Static EXFIL 400 control  SubmissionStatus.PENDING
 ```
 
 ## Packaging
@@ -118,18 +125,51 @@ model_sources:
 - llkh0a/gpt-oss-20b-gguf/PyTorch/default/1
 ```
 
-Push command to run only after the 256 pilot completes successfully:
+Pushed kernel version 1 after the 256 pilot completed successfully:
 
 ```bash
 .venv/bin/kaggle kernels push \
   -p submissions/static-exfil-400-pilot-ead7965-notebook/kernel
 ```
 
+Kernel status after push:
+
+```text
+temperancehong/ai-agent-security-static-exfil-400-pilot
+KernelWorkerStatus.COMPLETE
+```
+
+Submitted kernel version 1:
+
+```bash
+KAGGLE_API_TOKEN="$(.venv/bin/kaggle auth print-access-token)" \
+.venv/bin/kaggle competitions submit \
+  -c ai-agent-security-multi-step-tool-attacks \
+  -f submission.csv \
+  -k temperancehong/ai-agent-security-static-exfil-400-pilot \
+  -v 1 \
+  -m "Static EXFIL 400 control"
+```
+
+Initial Kaggle status:
+
+```text
+55050309  submission.csv  2026-07-28 08:57:39.917000
+description: Static EXFIL 400 control
+status: SubmissionStatus.PENDING
+publicScore: null
+privateScore: null
+```
+
 ## Decision
 
-Keep packaged, but wait to submit until `55028148` completes.
+Submitted as the static control because `55028148` completed near the expected
+linear score.
 
 Next action:
 
-- If 256 returns near `23.040`, push/submit the 400 pilot.
-- If 256 returns blank or errors, inspect logs before increasing candidate count.
+- Wait for `55050309`.
+- If 400 returns near the expected `36` range, keep it as a calibration control
+  below the `61.085` live score.
+- If it errors or times out, inspect notebook logs before increasing static
+  candidate count further.
