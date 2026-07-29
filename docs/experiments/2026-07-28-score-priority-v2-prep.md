@@ -92,14 +92,20 @@ The new test verifies that `live-score-priority-v2`:
 
 ## Real-Model Result
 
-Not submitted to competition yet.
+Submitted after the static EXFIL 400 control completed at `36.000` and the
+untrusted notify bridge canary completed at `0.000`.
+
+Checked on 2026-07-29:
+
+```text
+55076352  Score-priority v2 adaptive template  SubmissionStatus.PENDING
+```
 
 ## Decision
 
 Keep as an opt-in v2 mode. The Kaggle notebook package is pushed and complete,
-but competition submission is held until the pending static control and UTA
-bridge canary finish, unless we decide to spend an additional submission slot
-before those scores land.
+and competition submission `55076352` is now pending. Do not submit a duplicate
+while that run is still in flight.
 
 ## Packaging
 

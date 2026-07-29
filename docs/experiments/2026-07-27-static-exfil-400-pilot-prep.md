@@ -173,3 +173,22 @@ Next action:
   below the `61.085` live score.
 - If it errors or times out, inspect notebook logs before increasing static
   candidate count further.
+
+## Public Result Update
+
+Checked on 2026-07-29:
+
+```text
+55050309  Static EXFIL 400 control  SubmissionStatus.COMPLETE  publicScore=36.000
+```
+
+This landed exactly on the expected formula:
+
+```text
+400 * (16 EXFILTRATION severity + 2 unique-cell bonus) / 200 = 36.000
+```
+
+Decision: keep `submission-static-exfil-400` as the calibrated static EXFIL
+control. It is lower than `live-score-priority` at `61.085`, but it proves the
+single-message `http.post` shape, URL-cell diversity, and 400-candidate replay
+count are all safe on the public path.
