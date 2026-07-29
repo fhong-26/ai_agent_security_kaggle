@@ -226,3 +226,16 @@ KAGGLE_API_TOKEN="$(.venv/bin/kaggle auth print-access-token)" \
   -v 1 \
   -m "Category explore v1 anchored basket"
 ```
+
+Submitted to the competition on 2026-07-29 after the user approved scoring:
+
+```text
+55076852  Score-max v3 live plus static backstop  SubmissionStatus.PENDING
+55076854  Category explore v1 anchored basket     SubmissionStatus.PENDING
+```
+
+Also still pending at the time of submission:
+
+```text
+55076352  Score-priority v2 adaptive template     SubmissionStatus.PENDING
+```
