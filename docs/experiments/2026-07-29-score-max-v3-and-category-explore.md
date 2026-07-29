@@ -195,6 +195,18 @@ Push commands, intentionally not run while v2 is pending:
   -p submissions/category-explore-v1-51c0339-notebook/kernel
 ```
 
+Pushed on 2026-07-29 after the user requested both prepared kernels:
+
+```text
+temperancehong/ai-agent-security-score-max-v3
+Kernel version 1 successfully pushed.
+KernelWorkerStatus.COMPLETE
+
+temperancehong/ai-agent-security-category-explore-v1
+Kernel version 1 successfully pushed.
+KernelWorkerStatus.COMPLETE
+```
+
 Submit commands after a pushed kernel version completes:
 
 ```bash
