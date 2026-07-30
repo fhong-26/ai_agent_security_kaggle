@@ -26,12 +26,15 @@ from attack import (
     DEFAULT_BURST_STACK_SIZE,
     DEFAULT_CATEGORY_EXPLORATION_CANDIDATE_LIMIT,
     DEFAULT_CATEGORY_EXPLORATION_FAMILY_COUNT,
+    DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT,
     DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT,
     DEFAULT_FULL_CANDIDATE_LIMIT,
     DEFAULT_SCORE_MAX_CANDIDATE_LIMIT,
     DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT,
     DEFAULT_SCORE_MAX_STATIC_BACKSTOP_LIMIT,
     DEFAULT_SCORE_MAX_STATIC_START_INDEX,
+    DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT,
+    DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT,
     DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT,
     DEFAULT_STATIC_EXFIL_256_CANDIDATE_LIMIT,
     DEFAULT_STATIC_EXFIL_400_CANDIDATE_LIMIT,
@@ -64,6 +67,7 @@ from attack import (
     is_score_max_candidate_set,
     is_score_priority_candidate_set,
     is_score_priority_v2_candidate_set,
+    is_score_priority_v2_static_candidate_set,
     is_static_return_candidate_set,
     is_throughput_candidate_set,
     iter_candidate_specs,
@@ -488,6 +492,14 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual((LIVE_FILL_EXFIL,), live_fill_families("throughput-single"))
         self.assertEqual((LIVE_FILL_CONFUSED_DEPUTY,), live_fill_families("live-confused"))
         self.assertEqual(
+            (LIVE_FILL_CONFUSED_DEPUTY,),
+            live_fill_families("submission-confused-deputy-micro"),
+        )
+        self.assertEqual(
+            DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-confused-deputy-micro"),
+        )
+        self.assertEqual(
             (LIVE_FILL_UNTRUSTED_TO_ACTION,),
             live_fill_families("live-untrusted-to-action"),
         )
@@ -530,6 +542,18 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual(
             DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT + DEFAULT_SCORE_MAX_STATIC_BACKSTOP_LIMIT,
             DEFAULT_SCORE_MAX_CANDIDATE_LIMIT,
+        )
+        self.assertTrue(
+            is_score_priority_v2_static_candidate_set("submission-score-priority-v2-static-64")
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-score-priority-v2-static-64"),
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
+            + DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT,
+            DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT,
         )
         self.assertTrue(is_category_exploration_candidate_set("submission-category-explore-v1"))
         self.assertTrue(is_static_return_candidate_set("submission-category-explore-v1"))
@@ -917,6 +941,34 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual(
             ["keep", "keep"],
             [attempt["decision"] for attempt in algorithm.last_run_details],
+        )
+
+    def test_confused_deputy_micro_caps_live_candidates(self) -> None:
+        env = FakeLiveFillEnv(fire=True)
+        algorithm = AttackAlgorithm(
+            {
+                "candidate_set": "submission-confused-deputy-micro",
+                "live_fill_warmup": False,
+                "live_fill_margin_s": 0.0,
+                "live_fill_slowest0_s": 0.0,
+                "live_fill_slowest_mult": 1.0,
+            }
+        )
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=100, max_tool_hops=4),
+        )
+
+        self.assertEqual(DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT, len(candidates))
+        self.assertEqual(DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT, env.interactions)
+        self.assertEqual(
+            {LIVE_FILL_CONFUSED_DEPUTY},
+            {attempt["family"] for attempt in algorithm.last_run_details},
+        )
+        self.assertEqual(
+            {"keep"},
+            {attempt["decision"] for attempt in algorithm.last_run_details},
         )
 
     def test_live_fill_keeps_destructive_write_candidates(self) -> None:
@@ -1576,6 +1628,50 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual(
             ["keep", "keep", "return_unvalidated_backstop"],
             [attempt["decision"] for attempt in algorithm.last_run_details[:3]],
+        )
+
+    def test_score_priority_v2_static_64_uses_adaptive_live_and_small_backstop(self) -> None:
+        env = FakeLiveFillEnv(
+            fire=True,
+            fired_families={LIVE_FILL_EXFIL, LIVE_FILL_CONFUSED_DEPUTY},
+        )
+        algorithm = AttackAlgorithm(
+            {
+                "candidate_set": "submission-score-priority-v2-static-64",
+                "max_candidates": 5,
+                "score_max_live_candidates": 2,
+                "live_fill_max_attempts": 2,
+                "live_fill_warmup": False,
+                "live_fill_margin_s": 0.0,
+                "live_fill_slowest0_s": 0.0,
+                "live_fill_slowest_mult": 1.0,
+                "live_fill_fast_template_threshold_s": 0.0,
+            }
+        )
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=10, max_tool_hops=4),
+        )
+
+        self.assertEqual(5, len(candidates))
+        self.assertEqual(
+            [
+                throughput_message(0),
+                throughput_message(1, template=THROUGHPUT_FAST_TEMPLATE),
+                throughput_message(DEFAULT_SCORE_MAX_STATIC_START_INDEX),
+                throughput_message(DEFAULT_SCORE_MAX_STATIC_START_INDEX + 1),
+                throughput_message(DEFAULT_SCORE_MAX_STATIC_START_INDEX + 2),
+            ],
+            [candidate.user_messages[0] for candidate in candidates],
+        )
+        self.assertEqual(
+            ["standard", "fast", None, None, None],
+            [attempt.get("template_mode") for attempt in algorithm.last_run_details],
+        )
+        self.assertEqual(
+            ["live", "live", "static_backstop", "static_backstop", "static_backstop"],
+            [attempt["score_max_phase"] for attempt in algorithm.last_run_details],
         )
 
     def test_score_priority_mode_falls_back_when_exfil_stalls(self) -> None:

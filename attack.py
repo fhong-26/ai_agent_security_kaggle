@@ -25,6 +25,11 @@ DEFAULT_SCORE_MAX_CANDIDATE_LIMIT: Final[int] = (
     DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT + DEFAULT_SCORE_MAX_STATIC_BACKSTOP_LIMIT
 )
 DEFAULT_SCORE_MAX_STATIC_START_INDEX: Final[int] = DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
+DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT: Final[int] = 64
+DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT: Final[int] = (
+    DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT + DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT
+)
+DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT: Final[int] = 64
 DEFAULT_CATEGORY_EXPLORATION_FAMILY_COUNT: Final[int] = 60
 DEFAULT_CATEGORY_EXPLORATION_CANDIDATE_LIMIT: Final[int] = (
     DEFAULT_CATEGORY_EXPLORATION_FAMILY_COUNT * 4
@@ -54,6 +59,14 @@ CONFUSED_DEPUTY_CANDIDATE_SETS: Final[set[str]] = {
     "confused-deputy-live",
     "confused_deputy_live",
     "live-confused",
+}
+CONFUSED_DEPUTY_MICRO_CANDIDATE_SETS: Final[set[str]] = {
+    "confused-deputy-micro",
+    "confused_deputy_micro",
+    "live-confused-deputy-micro",
+    "live_confused_deputy_micro",
+    "submission-confused-deputy-micro",
+    "submission_confused_deputy_micro",
 }
 UNTRUSTED_TO_ACTION_CANDIDATE_SETS: Final[set[str]] = {
     "live-untrusted-to-action",
@@ -190,6 +203,14 @@ SCORE_MAX_CANDIDATE_SETS: Final[set[str]] = {
     "submission-score-max-v3",
     "submission_score_max_v3",
 }
+SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS: Final[set[str]] = {
+    "score-priority-v2-static-64",
+    "score_priority_v2_static_64",
+    "live-score-priority-v2-static-64",
+    "live_score_priority_v2_static_64",
+    "submission-score-priority-v2-static-64",
+    "submission_score_priority_v2_static_64",
+}
 BURST_STACK_CANDIDATE_SETS: Final[set[str]] = {
     "live-burst",
     "live_burst",
@@ -232,6 +253,7 @@ HIGH_YIELD_LIVE_FILL_FAMILIES: Final[tuple[str, ...]] = (
 LIVE_FILL_CANDIDATE_SETS: Final[dict[str, tuple[str, ...]]] = {
     **{name: (LIVE_FILL_EXFIL,) for name in THROUGHPUT_CANDIDATE_SETS},
     **{name: (LIVE_FILL_CONFUSED_DEPUTY,) for name in CONFUSED_DEPUTY_CANDIDATE_SETS},
+    **{name: (LIVE_FILL_CONFUSED_DEPUTY,) for name in CONFUSED_DEPUTY_MICRO_CANDIDATE_SETS},
     **{name: (LIVE_FILL_UNTRUSTED_TO_ACTION,) for name in UNTRUSTED_TO_ACTION_CANDIDATE_SETS},
     **{
         name: (LIVE_FILL_UNTRUSTED_NOTIFY_BRIDGE,)
@@ -760,12 +782,16 @@ def default_candidate_limit(candidate_set: str) -> int:
         return DEFAULT_SUBMISSION_CANDIDATE_LIMIT
     if candidate_set in BURST_STACK_CANDIDATE_SETS:
         return DEFAULT_BURST_CANDIDATE_LIMIT
+    if candidate_set in CONFUSED_DEPUTY_MICRO_CANDIDATE_SETS:
+        return DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT
     if candidate_set in UNTRUSTED_NOTIFY_BRIDGE_CANDIDATE_SETS:
         return DEFAULT_UNTRUSTED_NOTIFY_BRIDGE_CANDIDATE_LIMIT
     if candidate_set in HIGH_YIELD_CANDIDATE_SETS:
         return HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT
     if candidate_set in SCORE_PRIORITY_CANDIDATE_SETS:
         return HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT
+    if candidate_set in SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS:
+        return DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT
     if candidate_set in SCORE_MAX_CANDIDATE_SETS:
         return DEFAULT_SCORE_MAX_CANDIDATE_LIMIT
     if candidate_set in AUTO_PORTFOLIO_CANDIDATE_SETS:
@@ -806,6 +832,11 @@ def is_score_priority_v2_candidate_set(candidate_set: str) -> bool:
 def is_score_max_candidate_set(candidate_set: str) -> bool:
     """Return whether a set composes live score-priority with static EXFIL backstop."""
     return candidate_set in SCORE_MAX_CANDIDATE_SETS
+
+
+def is_score_priority_v2_static_candidate_set(candidate_set: str) -> bool:
+    """Return whether a set appends a small static backstop after live v2."""
+    return candidate_set in SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS
 
 
 def is_category_exploration_candidate_set(candidate_set: str) -> bool:
@@ -1892,10 +1923,14 @@ class AttackAlgorithm(AttackAlgorithmBase):
                 max_candidates=max_candidates,
             )
 
-        if is_score_max_candidate_set(candidate_set):
+        if (
+            is_score_max_candidate_set(candidate_set)
+            or is_score_priority_v2_static_candidate_set(candidate_set)
+        ):
             return self._run_score_max(
                 env,
                 tb=tb,
+                candidate_set=candidate_set,
                 max_candidates=max_candidates,
                 max_tool_hops=max_tool_hops,
             )
@@ -2042,10 +2077,18 @@ class AttackAlgorithm(AttackAlgorithmBase):
         env: AttackEnvProtocol,
         *,
         tb: Timebox,
+        candidate_set: str,
         max_candidates: int,
         max_tool_hops: int,
     ) -> list[AttackCandidate]:
         """Run proven live score-priority, then append calibrated static EXFIL backstop."""
+        is_v2_static_rung = is_score_priority_v2_static_candidate_set(candidate_set)
+        default_static_cap = (
+            DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT
+            if is_v2_static_rung
+            else DEFAULT_SCORE_MAX_STATIC_BACKSTOP_LIMIT
+        )
+        default_adaptive_fast_exfil = is_v2_static_rung
         live_cap = min(
             max_candidates,
             max(
@@ -2063,7 +2106,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
             int(
                 self.config.get(
                     "score_max_static_backstop_candidates",
-                    DEFAULT_SCORE_MAX_STATIC_BACKSTOP_LIMIT,
+                    default_static_cap,
                 )
             ),
         )
@@ -2078,7 +2121,9 @@ class AttackAlgorithm(AttackAlgorithmBase):
         )
         payload = str(self.config.get("throughput_payload", THROUGHPUT_PAYLOAD))
         static_template = str(self.config.get("score_max_static_template", THROUGHPUT_TEMPLATE))
-        adaptive_fast_exfil = bool(self.config.get("score_max_adaptive_fast_exfil", False))
+        adaptive_fast_exfil = bool(
+            self.config.get("score_max_adaptive_fast_exfil", default_adaptive_fast_exfil)
+        )
 
         candidates: list[AttackCandidate] = []
         details: list[dict[str, Any]] = []
