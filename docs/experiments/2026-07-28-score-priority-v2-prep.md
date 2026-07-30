@@ -101,11 +101,28 @@ Checked on 2026-07-29:
 55076352  Score-priority v2 adaptive template  SubmissionStatus.PENDING
 ```
 
+Checked on 2026-07-30:
+
+```text
+55076352  Score-priority v2 adaptive template  SubmissionStatus.COMPLETE  publicScore=65.565
+```
+
+This is the best current public score and improves over
+`live-score-priority` at `61.085` by `4.480` normalized points. Under the
+competition normalization this is about `896` additional raw score, or roughly
+50 extra clean unique EXFIL-equivalent cells:
+
+```text
+65.565 * 200 = 13,113 raw
+61.085 * 200 = 12,217 raw
+(13,113 - 12,217) / 18 ~= 50
+```
+
 ## Decision
 
 Keep as an opt-in v2 mode. The Kaggle notebook package is pushed and complete,
-and competition submission `55076352` is now pending. Do not submit a duplicate
-while that run is still in flight.
+and competition submission `55076352` completed with a public score of
+`65.565`. Treat `live-score-priority-v2` as the current score baseline.
 
 ## Packaging
 

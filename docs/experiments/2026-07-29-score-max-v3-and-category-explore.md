@@ -239,3 +239,47 @@ Also still pending at the time of submission:
 ```text
 55076352  Score-priority v2 adaptive template     SubmissionStatus.PENDING
 ```
+
+## Public Result Update
+
+Checked on 2026-07-30:
+
+```text
+55076352  Score-priority v2 adaptive template      SubmissionStatus.COMPLETE  publicScore=65.565
+55076852  Score-max v3 live plus static backstop   SubmissionStatus.COMPLETE  publicScore=null
+55076854  Category explore v1 anchored basket      SubmissionStatus.COMPLETE  publicScore=null
+```
+
+The Kaggle API `repr` for both `55076852` and `55076854` reports:
+
+```text
+totalBytes=0
+errorDescription="Your notebook generated a submission file with incorrect format. Some examples causing this are: wrong number of rows or columns, empty values, an incorrect data type for a value, or invalid submission values from what is expected."
+```
+
+Interpretation: the two portfolio submissions are invalid hidden reruns, not
+scored zeros. The official gateway did not produce a valid `submission.csv`, so
+we should not infer predicate weakness from their blank scores.
+
+Lessons:
+
+- `live-score-priority-v2` is the new score baseline. It beat the prior
+  `61.085` live-priority score by `4.480`, about `896` raw score or roughly 50
+  additional clean EXFIL-equivalent cells.
+- The 400 static EXFIL control remains valid alone, but appending a 400-row
+  static backstop after a live run is too aggressive. The likely failure mode is
+  hidden replay timeout or another gateway exception before final CSV writing.
+- Candidate count is not the only replay-risk variable. `submission-category-
+  explore-v1` had only 240 returned candidates, less than the successful 400
+  EXFIL control, but its multi-message UTA and destructive-write candidates are
+  much more expensive/risky to replay.
+- Future score portfolios need small increments over v2, not a 400-candidate
+  jump. A safer next rung is v2 plus 32-64 static EXFIL backstop candidates,
+  with static URLs starting after the live range.
+- Future category exploration should be split into micro-canaries: one weak
+  family at a time, with a small EXFIL anchor, so a format failure identifies
+  the expensive family and a scored result remains interpretable.
+
+Decision: discard `score-max-v3` and `category-explore-v1` as submitted
+portfolio shapes. Keep `live-score-priority-v2`; build the next score attempt as
+a smaller v2-plus-static-backstop rung.
