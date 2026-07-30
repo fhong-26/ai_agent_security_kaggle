@@ -134,3 +134,24 @@ kernel_dir: submissions/confused-deputy-micro-ba82cab-notebook/kernel
 notebook_sha256: a33eb775dd6ed1ebbbb927e217d090ba1bca47fdfcfa97f63846f95cfcef6f11
 metadata_sha256: 032563d66cd05059f151c1e053b77aa0618a9742888d35fea16ccefa886887e8
 ```
+
+## Push And Submit
+
+Pushed both kernels on 2026-07-30:
+
+```text
+temperancehong/ai-agent-security-v2-static64
+Kernel version 1 successfully pushed.
+KernelWorkerStatus.COMPLETE
+
+temperancehong/ai-agent-security-confused-deputy-micro
+Kernel version 1 successfully pushed.
+KernelWorkerStatus.COMPLETE
+```
+
+Submitted both kernels to the competition:
+
+```text
+55108726  Score priority v2 plus static64       SubmissionStatus.PENDING
+55108728  Confused deputy micro canary          SubmissionStatus.PENDING
+```
