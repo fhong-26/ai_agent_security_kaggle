@@ -100,3 +100,37 @@ Proceed to package, push, and submit both as separate notebooks:
 
 1. `submission-score-priority-v2-static-64` for the score ladder.
 2. `submission-confused-deputy-micro` as the isolated non-EXFIL canary.
+
+## Packaging
+
+Generated source copies under ignored `runs/submission-sources/`:
+
+```text
+runs/submission-sources/v2-static64/attack.py
+DEFAULT_SUBMISSION_CANDIDATE_SET: submission-score-priority-v2-static-64
+resolved default candidate limit: 1064
+is score-priority-v2-static: True
+attack.py bytes: 102274
+attack.py sha256: 068edd258c169272068bf640189b93c3aa67d16cb7b938dcbd4d8d96467d30c9
+
+runs/submission-sources/confused-deputy-micro/attack.py
+DEFAULT_SUBMISSION_CANDIDATE_SET: submission-confused-deputy-micro
+resolved default candidate limit: 64
+is live fill: True
+attack.py bytes: 102268
+attack.py sha256: 92ba2d68915d327e5ee163513616198da0e046fad0333133ea10667a96bced91
+```
+
+Packaged notebooks:
+
+```text
+kernel_ref: temperancehong/ai-agent-security-v2-static64
+kernel_dir: submissions/v2-static64-ba82cab-notebook/kernel
+notebook_sha256: a950236b129d96d8cff6bd69cc007e36a356a2915a5eba0b457955ce12988a40
+metadata_sha256: c0555c2a817e2ffbc5f54a42852fc0af3aa9550c7d993aad4d9fe60e0851b44d
+
+kernel_ref: temperancehong/ai-agent-security-confused-deputy-micro
+kernel_dir: submissions/confused-deputy-micro-ba82cab-notebook/kernel
+notebook_sha256: a33eb775dd6ed1ebbbb927e217d090ba1bca47fdfcfa97f63846f95cfcef6f11
+metadata_sha256: 032563d66cd05059f151c1e053b77aa0618a9742888d35fea16ccefa886887e8
+```
