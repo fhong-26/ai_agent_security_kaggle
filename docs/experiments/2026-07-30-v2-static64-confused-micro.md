@@ -155,3 +155,26 @@ Submitted both kernels to the competition:
 55108726  Score priority v2 plus static64       SubmissionStatus.PENDING
 55108728  Confused deputy micro canary          SubmissionStatus.PENDING
 ```
+
+## Final Public Results
+
+Observed on 2026-07-31:
+
+```text
+55108726  Score priority v2 plus static64  SubmissionStatus.COMPLETE  publicScore=
+55108728  Confused deputy micro canary     SubmissionStatus.COMPLETE  publicScore=1.920
+```
+
+The reduced static backstop rung failed with a blank public score, matching the
+earlier mixed/static basket failure mode rather than a scored zero. Treat this
+as evidence that adding even a small static tail to the live v2 path can make the
+Kaggle submission output invalid or unreplayable under the hidden rerun.
+
+The confused-deputy micro canary scored a small but real public signal. Keep it
+as a weak-case probe and mutation seed, but do not mix it into the main
+score-priority EXFIL path until the candidate volume and replay behavior are
+measured in isolation.
+
+Decision: discard `score-priority-v2-static-64` as a score ladder. Preserve the
+last proven score rung, `score-priority-v2 adaptive template` at `65.565`, and
+explore small isolated confused-deputy mutations separately.

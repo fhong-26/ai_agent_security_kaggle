@@ -151,3 +151,31 @@ KAGGLE_API_TOKEN="$(.venv/bin/kaggle auth print-access-token)" \
 Keep this as the next clean score-seeking live-only submission. It directly
 addresses the two invalid mixed/static portfolio submissions by avoiding
 unmeasured candidates while still adapting prompt shape and replay size.
+
+## Submission Outcome
+
+Pushed and submitted after the preparation note:
+
+```text
+kernel_ref: temperancehong/ai-agent-security-live-template-bandit-exfil
+kernel_version: 1
+submission_ref: 55109259
+description: Live template bandit EXFIL
+```
+
+Final public result observed on 2026-07-31:
+
+```text
+55109259  Live template bandit EXFIL  SubmissionStatus.COMPLETE  publicScore=
+```
+
+This completed with a blank public score, not a scored zero. The live-only
+template-bandit path therefore failed as a competition submission despite the
+local mock validation and successful Kaggle kernel run.
+
+Decision: discard this candidate set as a score-seeking rung. The failed result
+suggests the template-bandit return set likely exceeded hidden replay/output
+constraints or produced candidates that the competition rerun could not
+materialize. Prefer the last proven `score-priority-v2 adaptive template`
+submission at `65.565` for EXFIL scoring work, and use future submissions to
+make one small, isolated change at a time.
