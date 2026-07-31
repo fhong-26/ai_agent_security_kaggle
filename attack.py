@@ -35,6 +35,7 @@ DEFAULT_TEMPLATE_BANDIT_MARGIN_S: Final[float] = 45.0
 DEFAULT_TEMPLATE_BANDIT_SLOWEST0_S: Final[float] = 24.0
 DEFAULT_TEMPLATE_BANDIT_SLOWEST_MULT: Final[float] = 1.20
 DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT: Final[int] = 64
+DEFAULT_CONFUSED_DEPUTY_512_CANDIDATE_LIMIT: Final[int] = 512
 DEFAULT_CATEGORY_EXPLORATION_FAMILY_COUNT: Final[int] = 60
 DEFAULT_CATEGORY_EXPLORATION_CANDIDATE_LIMIT: Final[int] = (
     DEFAULT_CATEGORY_EXPLORATION_FAMILY_COUNT * 4
@@ -77,6 +78,14 @@ CONFUSED_DEPUTY_MICRO_CANDIDATE_SETS: Final[set[str]] = {
     "live_confused_deputy_micro",
     "submission-confused-deputy-micro",
     "submission_confused_deputy_micro",
+}
+CONFUSED_DEPUTY_512_CANDIDATE_SETS: Final[set[str]] = {
+    "confused-deputy-512",
+    "confused_deputy_512",
+    "live-confused-deputy-512",
+    "live_confused_deputy_512",
+    "submission-confused-deputy-512",
+    "submission_confused_deputy_512",
 }
 UNTRUSTED_TO_ACTION_CANDIDATE_SETS: Final[set[str]] = {
     "live-untrusted-to-action",
@@ -276,6 +285,7 @@ LIVE_FILL_CANDIDATE_SETS: Final[dict[str, tuple[str, ...]]] = {
     **{name: (LIVE_FILL_EXFIL,) for name in THROUGHPUT_CANDIDATE_SETS},
     **{name: (LIVE_FILL_CONFUSED_DEPUTY,) for name in CONFUSED_DEPUTY_CANDIDATE_SETS},
     **{name: (LIVE_FILL_CONFUSED_DEPUTY,) for name in CONFUSED_DEPUTY_MICRO_CANDIDATE_SETS},
+    **{name: (LIVE_FILL_CONFUSED_DEPUTY,) for name in CONFUSED_DEPUTY_512_CANDIDATE_SETS},
     **{name: (LIVE_FILL_UNTRUSTED_TO_ACTION,) for name in UNTRUSTED_TO_ACTION_CANDIDATE_SETS},
     **{
         name: (LIVE_FILL_UNTRUSTED_NOTIFY_BRIDGE,)
@@ -817,6 +827,8 @@ def default_candidate_limit(candidate_set: str) -> int:
         return DEFAULT_BURST_CANDIDATE_LIMIT
     if candidate_set in CONFUSED_DEPUTY_MICRO_CANDIDATE_SETS:
         return DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT
+    if candidate_set in CONFUSED_DEPUTY_512_CANDIDATE_SETS:
+        return DEFAULT_CONFUSED_DEPUTY_512_CANDIDATE_LIMIT
     if candidate_set in UNTRUSTED_NOTIFY_BRIDGE_CANDIDATE_SETS:
         return DEFAULT_UNTRUSTED_NOTIFY_BRIDGE_CANDIDATE_LIMIT
     if candidate_set in HIGH_YIELD_CANDIDATE_SETS:

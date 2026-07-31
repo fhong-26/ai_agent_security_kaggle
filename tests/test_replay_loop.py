@@ -26,6 +26,7 @@ from attack import (
     DEFAULT_BURST_STACK_SIZE,
     DEFAULT_CATEGORY_EXPLORATION_CANDIDATE_LIMIT,
     DEFAULT_CATEGORY_EXPLORATION_FAMILY_COUNT,
+    DEFAULT_CONFUSED_DEPUTY_512_CANDIDATE_LIMIT,
     DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT,
     DEFAULT_FOUR_TYPE_SANITY_CANDIDATE_LIMIT,
     DEFAULT_FULL_CANDIDATE_LIMIT,
@@ -537,6 +538,14 @@ class ThroughputLiveFillTests(unittest.TestCase):
             default_candidate_limit("submission-confused-deputy-micro"),
         )
         self.assertEqual(
+            (LIVE_FILL_CONFUSED_DEPUTY,),
+            live_fill_families("submission-confused-deputy-512"),
+        )
+        self.assertEqual(
+            DEFAULT_CONFUSED_DEPUTY_512_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-confused-deputy-512"),
+        )
+        self.assertEqual(
             (LIVE_FILL_UNTRUSTED_TO_ACTION,),
             live_fill_families("live-untrusted-to-action"),
         )
@@ -1022,6 +1031,34 @@ class ThroughputLiveFillTests(unittest.TestCase):
 
         self.assertEqual(DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT, len(candidates))
         self.assertEqual(DEFAULT_CONFUSED_DEPUTY_MICRO_CANDIDATE_LIMIT, env.interactions)
+        self.assertEqual(
+            {LIVE_FILL_CONFUSED_DEPUTY},
+            {attempt["family"] for attempt in algorithm.last_run_details},
+        )
+        self.assertEqual(
+            {"keep"},
+            {attempt["decision"] for attempt in algorithm.last_run_details},
+        )
+
+    def test_confused_deputy_512_caps_live_candidates(self) -> None:
+        env = FakeLiveFillEnv(fire=True)
+        algorithm = AttackAlgorithm(
+            {
+                "candidate_set": "submission-confused-deputy-512",
+                "live_fill_warmup": False,
+                "live_fill_margin_s": 0.0,
+                "live_fill_slowest0_s": 0.0,
+                "live_fill_slowest_mult": 1.0,
+            }
+        )
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=1000, max_tool_hops=4),
+        )
+
+        self.assertEqual(DEFAULT_CONFUSED_DEPUTY_512_CANDIDATE_LIMIT, len(candidates))
+        self.assertEqual(DEFAULT_CONFUSED_DEPUTY_512_CANDIDATE_LIMIT, env.interactions)
         self.assertEqual(
             {LIVE_FILL_CONFUSED_DEPUTY},
             {attempt["family"] for attempt in algorithm.last_run_details},
