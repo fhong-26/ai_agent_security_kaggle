@@ -33,6 +33,11 @@ DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT: Final[int] = 64
 DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT: Final[int] = (
     DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT + DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT
 )
+DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_TAIL_LIMIT: Final[int] = 640
+DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_LIMIT: Final[int] = (
+    DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
+    + DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_TAIL_LIMIT
+)
 DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX: Final[int] = (
     DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
 )
@@ -237,13 +242,25 @@ SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS: Final[set[str]] = {
     "submission-score-priority-v2-static-64",
     "submission_score_priority_v2_static_64",
 }
-SCORE_PRIORITY_V2_CONFUSED_TAIL_CANDIDATE_SETS: Final[set[str]] = {
+SCORE_PRIORITY_V2_CONFUSED_64_CANDIDATE_SETS: Final[set[str]] = {
     "score-priority-v2-confused-64",
     "score_priority_v2_confused_64",
     "live-score-priority-v2-confused-64",
     "live_score_priority_v2_confused_64",
     "submission-score-priority-v2-confused-64",
     "submission_score_priority_v2_confused_64",
+}
+SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_SETS: Final[set[str]] = {
+    "score-priority-v2-confused-640",
+    "score_priority_v2_confused_640",
+    "live-score-priority-v2-confused-640",
+    "live_score_priority_v2_confused_640",
+    "submission-score-priority-v2-confused-640",
+    "submission_score_priority_v2_confused_640",
+}
+SCORE_PRIORITY_V2_CONFUSED_TAIL_CANDIDATE_SETS: Final[set[str]] = {
+    *SCORE_PRIORITY_V2_CONFUSED_64_CANDIDATE_SETS,
+    *SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_SETS,
 }
 TEMPLATE_BANDIT_EXFIL_CANDIDATE_SETS: Final[set[str]] = {
     "live-template-bandit-exfil",
@@ -852,6 +869,8 @@ def default_candidate_limit(candidate_set: str) -> int:
         return HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT
     if candidate_set in SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS:
         return DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT
+    if candidate_set in SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_SETS:
+        return DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_LIMIT
     if candidate_set in SCORE_PRIORITY_V2_CONFUSED_TAIL_CANDIDATE_SETS:
         return DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT
     if candidate_set in TEMPLATE_BANDIT_EXFIL_CANDIDATE_SETS:
@@ -906,6 +925,13 @@ def is_score_priority_v2_static_candidate_set(candidate_set: str) -> bool:
 def is_score_priority_v2_confused_tail_candidate_set(candidate_set: str) -> bool:
     """Return whether a set appends a live confused-deputy tail after live v2."""
     return candidate_set in SCORE_PRIORITY_V2_CONFUSED_TAIL_CANDIDATE_SETS
+
+
+def score_priority_v2_confused_tail_limit(candidate_set: str) -> int:
+    """Return the default confused-deputy tail size for a combined v2 set."""
+    if candidate_set in SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_SETS:
+        return DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_TAIL_LIMIT
+    return DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT
 
 
 def is_template_bandit_exfil_candidate_set(candidate_set: str) -> bool:
@@ -2022,6 +2048,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
             return self._run_score_priority_v2_confused_tail(
                 env,
                 tb=tb,
+                candidate_set=candidate_set,
                 max_candidates=max_candidates,
                 max_tool_hops=max_tool_hops,
             )
@@ -2629,16 +2656,18 @@ class AttackAlgorithm(AttackAlgorithmBase):
         env: AttackEnvProtocol,
         *,
         tb: Timebox,
+        candidate_set: str,
         max_candidates: int,
         max_tool_hops: int,
     ) -> list[AttackCandidate]:
         """Run live score-priority v2, then append a live confused-deputy tail."""
+        default_tail_cap = score_priority_v2_confused_tail_limit(candidate_set)
         tail_cap_config = max(
             0,
             int(
                 self.config.get(
                     "score_priority_v2_confused_tail_candidates",
-                    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT,
+                    default_tail_cap,
                 )
             ),
         )

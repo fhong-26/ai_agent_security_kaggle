@@ -34,6 +34,8 @@ from attack import (
     DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT,
     DEFAULT_SCORE_MAX_STATIC_BACKSTOP_LIMIT,
     DEFAULT_SCORE_MAX_STATIC_START_INDEX,
+    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_LIMIT,
+    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_TAIL_LIMIT,
     DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT,
     DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT,
     DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX,
@@ -85,6 +87,7 @@ from attack import (
     iter_candidate_specs,
     live_fill_families,
     live_fill_messages,
+    score_priority_v2_confused_tail_limit,
     trace_has_confused_deputy,
     trace_has_destructive_write,
     throughput_message,
@@ -618,6 +621,28 @@ class ThroughputLiveFillTests(unittest.TestCase):
             DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
             + DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT,
             DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT,
+        )
+        self.assertTrue(
+            is_score_priority_v2_confused_tail_candidate_set(
+                "submission-score-priority-v2-confused-640"
+            )
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-score-priority-v2-confused-640"),
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
+            + DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_TAIL_LIMIT,
+            DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_CANDIDATE_LIMIT,
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT,
+            score_priority_v2_confused_tail_limit("submission-score-priority-v2-confused-64"),
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_PRIORITY_V2_CONFUSED_640_TAIL_LIMIT,
+            score_priority_v2_confused_tail_limit("submission-score-priority-v2-confused-640"),
         )
         self.assertTrue(is_template_bandit_exfil_candidate_set("live-template-bandit-exfil"))
         self.assertTrue(
