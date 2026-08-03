@@ -29,6 +29,13 @@ DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT: Final[int] = 64
 DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT: Final[int] = (
     DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT + DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT
 )
+DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT: Final[int] = 64
+DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT: Final[int] = (
+    DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT + DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT
+)
+DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX: Final[int] = (
+    DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
+)
 DEFAULT_TEMPLATE_BANDIT_CANDIDATE_LIMIT: Final[int] = MAX_RETURNED_CANDIDATES
 DEFAULT_TEMPLATE_BANDIT_PROBES_PER_TEMPLATE: Final[int] = 5
 DEFAULT_TEMPLATE_BANDIT_MARGIN_S: Final[float] = 45.0
@@ -229,6 +236,14 @@ SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS: Final[set[str]] = {
     "live_score_priority_v2_static_64",
     "submission-score-priority-v2-static-64",
     "submission_score_priority_v2_static_64",
+}
+SCORE_PRIORITY_V2_CONFUSED_TAIL_CANDIDATE_SETS: Final[set[str]] = {
+    "score-priority-v2-confused-64",
+    "score_priority_v2_confused_64",
+    "live-score-priority-v2-confused-64",
+    "live_score_priority_v2_confused_64",
+    "submission-score-priority-v2-confused-64",
+    "submission_score_priority_v2_confused_64",
 }
 TEMPLATE_BANDIT_EXFIL_CANDIDATE_SETS: Final[set[str]] = {
     "live-template-bandit-exfil",
@@ -837,6 +852,8 @@ def default_candidate_limit(candidate_set: str) -> int:
         return HIGH_YIELD_SUBMISSION_CANDIDATE_LIMIT
     if candidate_set in SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS:
         return DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT
+    if candidate_set in SCORE_PRIORITY_V2_CONFUSED_TAIL_CANDIDATE_SETS:
+        return DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT
     if candidate_set in TEMPLATE_BANDIT_EXFIL_CANDIDATE_SETS:
         return DEFAULT_TEMPLATE_BANDIT_CANDIDATE_LIMIT
     if candidate_set in SCORE_MAX_CANDIDATE_SETS:
@@ -884,6 +901,11 @@ def is_score_max_candidate_set(candidate_set: str) -> bool:
 def is_score_priority_v2_static_candidate_set(candidate_set: str) -> bool:
     """Return whether a set appends a small static backstop after live v2."""
     return candidate_set in SCORE_PRIORITY_V2_STATIC_CANDIDATE_SETS
+
+
+def is_score_priority_v2_confused_tail_candidate_set(candidate_set: str) -> bool:
+    """Return whether a set appends a live confused-deputy tail after live v2."""
+    return candidate_set in SCORE_PRIORITY_V2_CONFUSED_TAIL_CANDIDATE_SETS
 
 
 def is_template_bandit_exfil_candidate_set(candidate_set: str) -> bool:
@@ -1996,6 +2018,14 @@ class AttackAlgorithm(AttackAlgorithmBase):
                 max_tool_hops=max_tool_hops,
             )
 
+        if is_score_priority_v2_confused_tail_candidate_set(candidate_set):
+            return self._run_score_priority_v2_confused_tail(
+                env,
+                tb=tb,
+                max_candidates=max_candidates,
+                max_tool_hops=max_tool_hops,
+            )
+
         if is_burst_stack_candidate_set(candidate_set):
             return self._run_burst_stack(
                 env,
@@ -2594,6 +2624,89 @@ class AttackAlgorithm(AttackAlgorithmBase):
         self.last_run_details = details
         return candidates[:MAX_RETURNED_CANDIDATES]
 
+    def _run_score_priority_v2_confused_tail(
+        self,
+        env: AttackEnvProtocol,
+        *,
+        tb: Timebox,
+        max_candidates: int,
+        max_tool_hops: int,
+    ) -> list[AttackCandidate]:
+        """Run live score-priority v2, then append a live confused-deputy tail."""
+        tail_cap_config = max(
+            0,
+            int(
+                self.config.get(
+                    "score_priority_v2_confused_tail_candidates",
+                    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT,
+                )
+            ),
+        )
+        tail_start_index = max(
+            0,
+            int(
+                self.config.get(
+                    "score_priority_v2_confused_tail_start_index",
+                    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX,
+                )
+            ),
+        )
+        live_cap_config = max(
+            0,
+            int(
+                self.config.get(
+                    "score_priority_v2_confused_live_candidates",
+                    DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT,
+                )
+            ),
+        )
+
+        tail_cap_requested = min(tail_cap_config, max_candidates)
+        live_cap = min(live_cap_config, max(0, max_candidates - tail_cap_requested))
+        adaptive_fast_exfil = bool(
+            self.config.get("score_priority_v2_confused_adaptive_fast_exfil", True)
+        )
+
+        candidates: list[AttackCandidate] = []
+        details: list[dict[str, Any]] = []
+        if live_cap:
+            live_candidates = self._run_live_fill(
+                env,
+                tb=tb,
+                max_candidates=live_cap,
+                max_tool_hops=max_tool_hops,
+                families=HIGH_YIELD_LIVE_FILL_FAMILIES,
+                default_family_fail_cap=1,
+                prefer_first_family=True,
+                adaptive_fast_exfil=adaptive_fast_exfil,
+            )
+            candidates.extend(live_candidates)
+            details.extend(
+                {**attempt, "score_priority_v2_confused_phase": "score_priority_v2"}
+                for attempt in self.last_run_details
+            )
+
+        remaining_slots = max(0, max_candidates - len(candidates))
+        tail_cap = min(tail_cap_config, remaining_slots)
+        if tail_cap and not tb.expired():
+            tail_candidates = self._run_live_fill(
+                env,
+                tb=tb,
+                max_candidates=tail_cap,
+                max_tool_hops=max_tool_hops,
+                families=(LIVE_FILL_CONFUSED_DEPUTY,),
+                default_family_fail_cap=0,
+                start_index=tail_start_index,
+            )
+            candidates.extend(tail_candidates)
+            details.extend(
+                {**attempt, "score_priority_v2_confused_phase": "confused_tail"}
+                for attempt in self.last_run_details
+            )
+
+        self.last_run_details = details
+        return candidates[:MAX_RETURNED_CANDIDATES]
+
     def _run_burst_stack(
         self,
         env: AttackEnvProtocol,
@@ -2818,6 +2931,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
         default_family_fail_cap: int = 0,
         prefer_first_family: bool = False,
         adaptive_fast_exfil: bool = False,
+        start_index: int | None = None,
     ) -> list[AttackCandidate]:
         """Validate live-fill prompts and return only the ones that fired."""
         payload = str(self.config.get("throughput_payload", THROUGHPUT_PAYLOAD))
@@ -2834,8 +2948,15 @@ class AttackAlgorithm(AttackAlgorithmBase):
         destructive_write_template = str(
             self.config.get("destructive_write_template", DESTRUCTIVE_WRITE_TEMPLATE)
         )
-        start_index = int(
-            self.config.get("live_fill_start_index", self.config.get("throughput_start_index", 0))
+        resolved_start_index = (
+            int(start_index)
+            if start_index is not None
+            else int(
+                self.config.get(
+                    "live_fill_start_index",
+                    self.config.get("throughput_start_index", 0),
+                )
+            )
         )
         warmup_enabled = bool(
             self.config.get("live_fill_warmup", self.config.get("throughput_warmup", True))
@@ -2977,7 +3098,7 @@ class AttackAlgorithm(AttackAlgorithmBase):
                     }
                 )
 
-        family_indexes = {family: start_index for family in families}
+        family_indexes = {family: resolved_start_index for family in families}
         family_failures = {family: 0 for family in families}
         active_families = list(families)
         family_cursor = 0

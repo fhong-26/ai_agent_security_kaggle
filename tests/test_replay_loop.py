@@ -34,6 +34,9 @@ from attack import (
     DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT,
     DEFAULT_SCORE_MAX_STATIC_BACKSTOP_LIMIT,
     DEFAULT_SCORE_MAX_STATIC_START_INDEX,
+    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT,
+    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT,
+    DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX,
     DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT,
     DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT,
     DEFAULT_STATIC_EXFIL_CANDIDATE_LIMIT,
@@ -73,6 +76,7 @@ from attack import (
     is_live_fill_candidate_set,
     is_score_max_candidate_set,
     is_score_priority_candidate_set,
+    is_score_priority_v2_confused_tail_candidate_set,
     is_score_priority_v2_candidate_set,
     is_score_priority_v2_static_candidate_set,
     is_static_return_candidate_set,
@@ -600,6 +604,20 @@ class ThroughputLiveFillTests(unittest.TestCase):
             DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
             + DEFAULT_SCORE_PRIORITY_V2_STATIC_BACKSTOP_LIMIT,
             DEFAULT_SCORE_PRIORITY_V2_STATIC_CANDIDATE_LIMIT,
+        )
+        self.assertTrue(
+            is_score_priority_v2_confused_tail_candidate_set(
+                "submission-score-priority-v2-confused-64"
+            )
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT,
+            default_candidate_limit("submission-score-priority-v2-confused-64"),
+        )
+        self.assertEqual(
+            DEFAULT_SCORE_MAX_LIVE_CANDIDATE_LIMIT
+            + DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_LIMIT,
+            DEFAULT_SCORE_PRIORITY_V2_CONFUSED_CANDIDATE_LIMIT,
         )
         self.assertTrue(is_template_bandit_exfil_candidate_set("live-template-bandit-exfil"))
         self.assertTrue(
@@ -1849,6 +1867,63 @@ class ThroughputLiveFillTests(unittest.TestCase):
         self.assertEqual(
             ["live", "live", "static_backstop", "static_backstop", "static_backstop"],
             [attempt["score_max_phase"] for attempt in algorithm.last_run_details],
+        )
+
+    def test_score_priority_v2_confused_64_uses_live_tail_without_static_backstop(self) -> None:
+        env = FakeLiveFillEnv(
+            fire=True,
+            fired_families={LIVE_FILL_EXFIL, LIVE_FILL_CONFUSED_DEPUTY},
+        )
+        algorithm = AttackAlgorithm(
+            {
+                "candidate_set": "submission-score-priority-v2-confused-64",
+                "max_candidates": 5,
+                "score_priority_v2_confused_live_candidates": 2,
+                "score_priority_v2_confused_tail_candidates": 3,
+                "live_fill_warmup": False,
+                "live_fill_margin_s": 0.0,
+                "live_fill_slowest0_s": 0.0,
+                "live_fill_slowest_mult": 1.0,
+                "live_fill_fast_template_threshold_s": 0.0,
+            }
+        )
+
+        candidates = algorithm.run(
+            env,
+            AttackRunConfig(time_budget_s=10.0, max_steps=10, max_tool_hops=4),
+        )
+
+        self.assertEqual(5, len(candidates))
+        self.assertEqual(
+            [
+                throughput_message(0),
+                throughput_message(1, template=THROUGHPUT_FAST_TEMPLATE),
+                confused_deputy_message(DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX),
+                confused_deputy_message(DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX + 1),
+                confused_deputy_message(DEFAULT_SCORE_PRIORITY_V2_CONFUSED_TAIL_START_INDEX + 2),
+            ],
+            [candidate.user_messages[0] for candidate in candidates],
+        )
+        self.assertEqual(
+            [
+                "score_priority_v2",
+                "score_priority_v2",
+                "confused_tail",
+                "confused_tail",
+                "confused_tail",
+            ],
+            [
+                attempt["score_priority_v2_confused_phase"]
+                for attempt in algorithm.last_run_details
+            ],
+        )
+        self.assertEqual(
+            [LIVE_FILL_EXFIL, LIVE_FILL_EXFIL, LIVE_FILL_CONFUSED_DEPUTY],
+            [attempt["family"] for attempt in algorithm.last_run_details[:3]],
+        )
+        self.assertEqual(
+            {"keep"},
+            {attempt["decision"] for attempt in algorithm.last_run_details},
         )
 
     def test_score_priority_mode_falls_back_when_exfil_stalls(self) -> None:
