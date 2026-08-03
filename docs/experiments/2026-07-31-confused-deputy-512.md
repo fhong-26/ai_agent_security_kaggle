@@ -111,10 +111,29 @@ Submitted kernel version 1 to the competition:
 55135666  Isolated confused deputy 512  SubmissionStatus.PENDING
 ```
 
+## Final Public Result
+
+Observed on 2026-08-03:
+
+```text
+55135666  Isolated confused deputy 512  SubmissionStatus.COMPLETE  publicScore=14.145
+```
+
+The submission scored `14.145` against an expected linear score of `15.360`,
+or about `92.1%` of the 64-candidate scaling hypothesis. In score-equivalent
+terms, the result is roughly `471.5` ideal confused-deputy cells out of `512`,
+leaving a gap of about `40.5` ideal candidate-equivalents.
+
+This is a strong positive result: the exact micro-canary template scaled by more
+than `7x` from the `1.920` 64-candidate result without causing a blank score.
+The remaining gap suggests that higher volume introduces some hidden replay,
+latency, duplicate-cell, or model-variance loss, but not enough to invalidate
+the family.
+
 ## Decision
 
-Keep this as an isolated ladder test. A public score near `15.360` would confirm
-that the confused-deputy score cells scale linearly with unique recipient and
-checkpoint labels. A blank or much lower score would point to a hidden replay,
-candidate-volume, or timeout threshold specific to the live confused-deputy
-path.
+Keep this as a validated isolated ladder. The family is score-positive and
+mostly linear, but future scaling should use measured steps rather than assuming
+perfect 512-to-1024 extrapolation. The next useful tests are either a larger
+isolated confused-deputy rung or a tiny, carefully budgeted combination with the
+last proven score-priority EXFIL path.
