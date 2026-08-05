@@ -8,6 +8,8 @@ Current repo commit during analysis: `60a1ad3`
 Recent public outcomes:
 
 ```text
+55206371  Score priority v2 plus confused640      COMPLETE  publicScore=
+55206257  Score priority v2 plus confused64       COMPLETE  publicScore=63.720
 55135666  Isolated confused deputy 512            COMPLETE  publicScore=14.145
 55109259  Live template bandit EXFIL              COMPLETE  publicScore=
 55108728  Confused deputy micro canary            COMPLETE  publicScore=1.920
@@ -42,6 +44,13 @@ scored, while mixed or more complex submissions repeatedly completed with blank
 public scores. A blank score is different from `0.000`: it looks like hidden
 rerun/output invalidity, not merely a failed attack.
 
+EXFIL plus confused-deputy is not additive. The tiny `+64` composition returned
+a valid score, but it fell from the `65.565` EXFIL baseline to `63.720`. The
+larger `+640` composition blanked. This suggests the mixed replay either steals
+budget from the EXFIL path, changes model behavior, or overloads replay before
+the combined score can materialize. Do not use EXFIL/confused-deputy composition
+for score-seeking unless a future minimal probe disproves this result.
+
 Static EXFIL is useful only when isolated. Standalone static EXFIL controls
 scored at 128, 256, and 400, but adding even a 64-candidate static backstop to
 the score-priority live path produced a blank result. Do not append static tails
@@ -56,20 +65,20 @@ not several at once.
 ## Submission Strategy
 
 Keep `score-priority-v2 adaptive template` as the best proven EXFIL rung at
-`65.565`.
+`65.565`, but do not combine it with confused-deputy for score attempts.
 
 Keep `isolated confused deputy 512` as a validated non-EXFIL rung at `14.145`.
 
-Next score-seeking experiments should be conservative:
+Next score-seeking experiments should isolate confused-deputy and increase score
+per returned candidate:
 
-- isolated confused-deputy scale test, such as `768` or `1024`, if the goal is
-  to measure the family ceiling;
-- tiny EXFIL plus confused-deputy composition, such as proven score-priority v2
-  with a `64` or `128` confused-deputy tail and no static backstop, if the goal
-  is a combined leaderboard rung;
+- isolated confused-deputy burst candidates with several notify actions per
+  replay finding;
+- isolated confused-deputy scale tests only when they change one replay variable
+  at a time;
 - never submit another high-cap adaptive/template-bandit basket until a smaller
   version proves it returns a nonblank score.
 
 Decision: the learning ladder paid off. Confused deputy should graduate from
-canary to one of the main score families, but composition with EXFIL must be
-tested in the same cautious, isolated way that made the 512 run interpretable.
+canary to one of the main score families, but composition with EXFIL has now
+failed badly enough that future 80-plus attempts should be confused-deputy-only.

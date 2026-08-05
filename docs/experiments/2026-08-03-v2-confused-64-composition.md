@@ -139,9 +139,21 @@ Submitted kernel version 1 to the competition:
 55206257  Score priority v2 plus confused64  SubmissionStatus.PENDING
 ```
 
+## Final Public Result
+
+Observed on 2026-08-05:
+
+```text
+55206257  Score priority v2 plus confused64  SubmissionStatus.COMPLETE  publicScore=63.720
+```
+
+This scored, but it underperformed the `65.565` score-priority v2 EXFIL
+baseline by `1.845` normalized points. The intended confused-deputy tail did
+not add to the EXFIL score; the combined replay appears to have reduced net
+yield.
+
 ## Decision
 
-This is now the first tiny live-only composition test. If it returns nonblank,
-use the result to choose between a `128` confused tail and larger isolated
-confused-deputy scaling. If it returns blank, keep the families isolated and do
-not combine them until the hidden composition failure is understood.
+Discard this as a score ladder. The result is nonblank, so tiny live-only
+composition can be valid, but EXFIL plus confused-deputy is not additive in the
+public rerun. Keep the families isolated for future score attempts.
